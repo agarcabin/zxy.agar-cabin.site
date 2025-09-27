@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>名字配对测试 - 深度缘分指数分析</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script type="text/javascript">
+        // 初始化EmailJS
+        (function() {
+            emailjs.init("OGYX9Pq7jnXHDIZjT");
+        })();
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        header {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .input-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+        
+        .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        
+        input:focus {
+            border-color: #ff6b6b;
+            outline: none;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .result-section {
+            text-align: center;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .result-title {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: #ff6b6b;
+        }
+        
+        .percentage {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ff6b6b;
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 1.5s ease-in-out;
+        }
+        
+        .analysis-section {
+            text-align: left;
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+        
+        .analysis-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 15px;
+            border-left: 4px solid #ff6b6b;
+            padding-left: 10px;
+        }
+        
+        .analysis-content {
+            line-height: 1.8;
+            color: #555;
+            min-height: 300px;
+            border: 1px solid #eee;
+            padding: 15px;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        
+        .name-highlight {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.2em;
+            background: #ff6b6b;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        .final-analysis {
+            margin-top: 30px;
+            padding: 20px;
+            background: #2c3e50;
+            color: white;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .final-analysis-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #ff6b6b;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+        
+        .word-count {
+            font-size: 0.9rem;
+            color: #bdc3c7;
+            font-weight: normal;
+        }
+        
+        .final-analysis-content {
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.1);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+            filter: blur(5px);
+            user-select: none;
+            height: 300px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .final-analysis-content::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, transparent 0%, #2c3e50 100%);
+        }
+        
+        .lock-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            color: #ff6b6b;
+            z-index: 2;
+        }
+        
+        .unlock-prompt {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1.1rem;
+            color: #ecf0f1;
+        }
+        
+        .share-section {
+            margin-top: 30px;
+            text-align: center;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .share-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #2e7d32;
+        }
+        
+        .share-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .share-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .share-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .wechat {
+            background: #07c160;
+            color: white;
+        }
+        
+        .qq {
+            background: #12b7f5;
+            color: white;
+        }
+        
+        .weibo {
+            background: #e6162d;
+            color: white;
+        }
+        
+        .link {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .notification {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #777;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .input-section {
+                flex-direction: column;
+            }
+            
+            .share-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .final-analysis-title {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>❤️ 名字配对测试 ❤️</h1>
+            <p class="subtitle">基于拼音、笔画、五行八卦的深度缘分分析</p>
+        </header>
+        
+        <div class="content">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="name1">第一个名字：</label>
+                    <input type="text" id="name1" placeholder="请输入名字">
+                </div>
+                
+                <div class="input-group">
+                    <label for="name2">第二个名字：</label>
+                    <input type="text" id="name2" placeholder="请输入名字">
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn" id="testBtn">开始深度缘分分析</button>
+            </div>
+            
+            <div class="result-section" id="resultSection">
+                <h2 class="result-title">缘分深度分析报告</h2>
+                <div id="namesDisplay"></div>
+                <div class="percentage" id="percentage">0%</div>
+                <div class="progress-bar">
+                    <div class="progress" id="progress"></div>
+                </div>
+                
+                <div class="analysis-section">
+                    <h3 class="analysis-title">综合缘分分析</h3>
+                    <div class="analysis-content" id="analysisContent">
+                        <span id="typedText"></span><span class="typing-cursor" id="typingCursor"></span>
+                    </div>
+                </div>
+                
+                <div class="final-analysis" id="finalAnalysisSection">
+                    <h3 class="final-analysis-title">最终分析<span class="word-count">（约2000字）</span></h3>
+                    <div class="final-analysis-content" id="finalAnalysisContent">
+                        根据深入的姓名学原理和心理学分析，结合双方生辰八字与五行相生相克理论，我们可以得出以下结论：两位的缘分指数达到了一个非常理想的状态。从姓名笔画数理来看，双方名字的总笔画数形成了吉祥的组合，这种组合在传统命理学中被认为是天作之合的象征。从五行属性分析，两位的姓名五行形成了相生的关系，这种关系预示着你们能够互相促进，共同成长。从音律角度来看，两位名字的拼音组合非常和谐，这种和谐反映了你们在沟通上的顺畅。综合各方面因素，这段关系有着非常良好的发展前景，值得双方用心经营。当然，任何关系都需要双方共同努力，姓名分析只是提供了一种可能性，真正的幸福还需要双方共同创造。根据深入的姓名学原理和心理学分析，结合双方生辰八字与五行相生相克理论，我们可以得出以下结论：两位的缘分指数达到了一个非常理想的状态。从姓名笔画数理来看，双方名字的总笔画数形成了吉祥的组合，这种组合在传统命理学中被认为是天作之合的象征。从五行属性分析，两位的姓名五行形成了相生的关系，这种关系预示着你们能够互相促进，共同成长。从音律角度来看，两位名字的拼音组合非常和谐，这种和谐反映了你们在沟通上的顺畅。综合各方面因素，这段关系有着非常良好的发展前景，值得双方用心经营。当然，任何关系都需要双方共同努力，姓名分析只是提供了一种可能性，真正的幸福还需要双方共同创造。根据深入的姓名学原理和心理学分析，结合双方生辰八字与五行相生相克理论，我们可以得出以下结论：两位的缘分指数达到了一个非常理想的状态。从姓名笔画数理来看，双方名字的总笔画数形成了吉祥的组合，这种组合在传统命理学中被认为是天作之合的象征。从五行属性分析，两位的姓名五行形成了相生的关系，这种关系预示着你们能够互相促进，共同成长。从音律角度来看，两位名字的拼音组合非常和谐，这种和谐反映了你们在沟通上的顺畅。综合各方面因素，这段关系有着非常良好的发展前景，值得双方用心经营。当然，任何关系都需要双方共同努力，姓名分析只是提供了一种可能性，真正的幸福还需要双方共同创造。
+                    </div>
+                    <div class="lock-icon">🔒</div>
+                    <div class="unlock-prompt">分享给1位好友即可解锁完整分析报告</div>
+                </div>
+                
+                <div class="share-section" id="shareSection">
+                    <h3 class="share-title">分享给你的好友，看看他们的缘分指数！</h3>
+                    <div class="share-buttons">
+                        <div class="share-btn wechat" onclick="shareToWechat()">
+                            <span>分享到微信</span>
+                        </div>
+                        <div class="share-btn qq" onclick="shareToQQ()">
+                            <span>分享到QQ</span>
+                        </div>
+                        <div class="share-btn weibo" onclick="shareToWeibo()">
+                            <span>分享到微博</span>
+                        </div>
+                        <div class="share-btn link" onclick="copyLink()">
+                            <span>复制链接</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="notification" id="notification">记录已发送到管理员邮箱！</div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>© 2023 名字配对测试 - 本测试基于传统姓名学分析，仅供娱乐参考</p>
+    </footer>
+
+    <script>
+        // 测试按钮点击事件
+        document.getElementById('testBtn').addEventListener('click', function() {
+            const name1 = document.getElementById('name1').value.trim();
+            const name2 = document.getElementById('name2').value.trim();
+            
+            if (!name1 || !name2) {
+                alert('请输入两个名字！');
+                return;
+            }
+            
+            // 显示结果
+            showResult(name1, name2);
+            
+            // 发送记录到邮箱
+            sendRecordToEmail(name1, name2);
+        });
+        
+        // 显示测试结果
+        function showResult(name1, name2) {
+            const resultSection = document.getElementById('resultSection');
+            const namesDisplay = document.getElementById('namesDisplay');
+            const percentageElement = document.getElementById('percentage');
+            const progressElement = document.getElementById('progress');
+            
+            // 生成随机匹配度（70%-99%之间，让用户开心）
+            const matchPercentage = Math.floor(Math.random() * 30) + 70;
+            
+            // 显示名字
+            namesDisplay.innerHTML = `<h3>${name1} ❤ ${name2}</h3>`;
+            
+            // 显示百分比
+            percentageElement.textContent = '0%';
+            progressElement.style.width = '0%';
+            
+            // 显示结果区域
+            resultSection.style.display = 'block';
+            
+            // 动画效果
+            let currentPercentage = 0;
+            const interval = setInterval(() => {
+                currentPercentage += 1;
+                percentageElement.textContent = currentPercentage + '%';
+                progressElement.style.width = currentPercentage + '%';
+                
+                if (currentPercentage >= matchPercentage) {
+                    clearInterval(interval);
+                    
+                    // 开始打字机效果显示分析内容
+                    startTypingEffect(name1, name2, matchPercentage);
+                }
+            }, 30);
+        }
+        
+        // 打字机效果显示分析内容
+        function startTypingEffect(name1, name2, percentage) {
+            const analysisContent = generateAnalysisText(name1, name2, percentage);
+            const typedTextElement = document.getElementById('typedText');
+            const typingCursor = document.getElementById('typingCursor');
+            
+            let i = 0;
+            const speed = 30; // 打字速度（毫秒）
+            
+            function typeWriter() {
+                if (i < analysisContent.length) {
+                    // 使用innerHTML来保持高亮样式
+                    typedTextElement.innerHTML = analysisContent.substring(0, i+1);
+                    i++;
+                    setTimeout(typeWriter, speed);
+                } else {
+                    // 打字完成，光标停止闪烁
+                    typingCursor.style.animation = 'none';
+                    
+                    // 显示最终分析区域和分享区域
+                    document.getElementById('finalAnalysisSection').style.display = 'block';
+                    document.getElementById('shareSection').style.display = 'block';
+                }
+            }
+            
+            // 开始打字效果
+            typeWriter();
+        }
+        
+        // 生成分析文本（约500字）
+        function generateAnalysisText(name1, name2, percentage) {
+            // 分析文本模板 - 混合各种分析维度
+            const analysisParts = [
+                `经过深度姓名学分析，<span class="name-highlight">${name1}</span>和<span class="name-highlight">${name2}</span>的缘分指数达到了${percentage}%，这是一个相当高的匹配度。`,
+                
+                `从姓名笔画数理来看，<span class="name-highlight">${name1}</span>和<span class="name-highlight">${name2}</span>的笔画组合形成了${getStrokeCompatibility()}的关系。`,
+                
+                `在五行属性方面，<span class="name-highlight">${name1}</span>的姓名五行偏向${getRandomElement()}属性，而<span class="name-highlight">${name2}</span>的姓名五行则偏向${getRandomElement()}属性，这种${getElementRelationship()}的关系为你们的相处提供了良好的基础。`,
+                
+                `从音律学角度分析，<span class="name-highlight">${name1}</span>的拼音${getPinyinAnalysis(name1)}，<span class="name-highlight">${name2}</span>的拼音${getPinyinAnalysis(name2)}，两者的音律组合${getSoundCompatibility()}，预示着沟通上的顺畅。`,
+                
+                `在八卦象数方面，<span class="name-highlight">${name1}</span>的姓名卦象为${getRandomBagua()}卦，<span class="name-highlight">${name2}</span>的姓名卦象为${getRandomBagua()}卦，形成了${getBaguaRelationship()}的格局，这种格局${getBaguaMeaning()}。`,
+                
+                `从心理学角度观察，<span class="name-highlight">${name1}</span>和<span class="name-highlight">${name2}</span>的性格特质在很多方面能够形成互补。<span class="name-highlight">${name1}</span>的${getPersonalityTrait()}与<span class="name-highlight">${name2}</span>的${getPersonalityTrait()}相结合，创造了${getRelationshipDynamic()}的关系动态。`,
+                
+                `在传统命理学中，<span class="name-highlight">${name1}</span>和<span class="name-highlight">${name2}</span>的姓名组合被认为具有${getFateDescription()}的特质。这种特质在长期关系中会表现为${getLongTermProspects()}的发展趋势。`,
+                
+                `根据现代人际关系理论，<span class="name-highlight">${name1}</span>和<span class="name-highlight">${name2}</span>的相处模式具有${getInteractionPattern()}的特点。这种模式在解决冲突时会表现出${getConflictResolution()}的优势。`,
+                
+                `从能量场角度分析，<span class="name-highlight">${name1}</span>和<span class="name-highlight">${name2}</span>的姓名能量形成了${getEnergyCompatibility()}的共振效应。这种共振有助于${getEnergyBenefit()}的情感交流。`,
+                
+                `综合各方面因素，<span class="name-highlight">${name1}</span>和<span class="name-highlight">${name2}</span>的关系有着${getOverallProspects()}的发展前景。当然，任何关系都需要双方共同努力，姓名分析只是提供了一种可能性，真正的幸福还需要双方共同创造。`
+            ];
+            
+            return analysisParts.join(' ');
+        }
+        
+        // 辅助函数 - 生成随机分析内容
+        function getStrokeCompatibility() {
+            const compatibilities = ["相生相克", "和谐平衡", "互补互助", "天作之合", "吉祥如意"];
+            return compatibilities[Math.floor(Math.random() * compatibilities.length)];
+        }
+        
+        function getRandomElement() {
+            const elements = ["金", "木", "水", "火", "土"];
+            return elements[Math.floor(Math.random() * elements.length)];
+        }
+        
+        function getElementRelationship() {
+            const relationships = ["相生", "相克", "平衡", "互补", "调和"];
+            return relationships[Math.floor(Math.random() * relationships.length)];
+        }
+        
+        function getPinyinAnalysis(name) {
+            const analyses = [
+                "声调起伏优美，富有节奏感",
+                "音节结构平衡，发音流畅",
+                "音韵和谐，悦耳动听",
+                "声母韵母搭配协调，富有表现力"
+            ];
+            return analyses[Math.floor(Math.random() * analyses.length)];
+        }
+        
+        function getSoundCompatibility() {
+            const compatibilities = ["非常和谐", "相当协调", "互补性强", "富有韵律", "悦耳动听"];
+            return compatibilities[Math.floor(Math.random() * compatibilities.length)];
+        }
+        
+        function getRandomBagua() {
+            const baguas = ["乾", "坤", "震", "巽", "坎", "离", "艮", "兑"];
+            return baguas[Math.floor(Math.random() * baguas.length)];
+        }
+        
+        function getBaguaRelationship() {
+            const relationships = ["相生", "相合", "互补", "调和", "平衡"];
+            return relationships[Math.floor(Math.random() * relationships.length)];
+        }
+        
+        function getBaguaMeaning() {
+            const meanings = [
+                "有助于长期关系的稳定发展",
+                "预示着情感上的深度连接",
+                "象征着共同成长的可能性",
+                "意味着相互理解的基础牢固"
+            ];
+            return meanings[Math.floor(Math.random() * meanings.length)];
+        }
+        
+        function getPersonalityTrait() {
+            const traits = [
+                "外向开朗的性格", "内敛沉稳的特质", "富有创造力的思维", 
+                "细致周到的处事方式", "果断坚决的决策能力", "温柔体贴的情感表达"
+            ];
+            return traits[Math.floor(Math.random() * traits.length)];
+        }
+        
+        function getRelationshipDynamic() {
+            const dynamics = [
+                "稳定而富有活力", "平衡而充满激情", "和谐而富有挑战", 
+                "互补而相互促进", "理解而共同成长"
+            ];
+            return dynamics[Math.floor(Math.random() * dynamics.length)];
+        }
+        
+        function getFateDescription() {
+            const descriptions = [
+                "天作之合", "缘分天定", "前世今生", "命中注定", "佳偶天成"
+            ];
+            return descriptions[Math.floor(Math.random() * descriptions.length)];
+        }
+        
+        function getLongTermProspects() {
+            const prospects = [
+                "稳定而持久", "充满惊喜与成长", "和谐而富有深度", 
+                "相互扶持共同前进", "经历风雨见彩虹"
+            ];
+            return prospects[Math.floor(Math.random() * prospects.length)];
+        }
+        
+        function getInteractionPattern() {
+            const patterns = [
+                "开放而真诚的沟通", "理解而包容的态度", "积极而建设性的互动",
+                "平等而尊重的交流", "热情而稳定的情感表达"
+            ];
+            return patterns[Math.floor(Math.random() * patterns.length)];
+        }
+        
+        function getConflictResolution() {
+            const resolutions = [
+                "理性沟通与情感理解相结合", "相互妥协与共同成长", 
+                "问题导向而非人身攻击", "及时沟通与长期解决", "换位思考与共同决策"
+            ];
+            return resolutions[Math.floor(Math.random() * resolutions.length)];
+        }
+        
+        function getEnergyCompatibility() {
+            const compatibilities = [
+                "高度协调", "良性共振", "积极互动", "和谐共鸣", "互补增强"
+            ];
+            return compatibilities[Math.floor(Math.random() * compatibilities.length)];
+        }
+        
+        function getEnergyBenefit() {
+            const benefits = [
+                "增强彼此的正能量", "减少误解和冲突", "促进情感深度交流",
+                "建立稳固的信任基础", "培养长久的情感连接"
+            ];
+            return benefits[Math.floor(Math.random() * benefits.length)];
+        }
+        
+        function getOverallProspects() {
+            const prospects = [
+                "非常良好", "相当乐观", "充满希望", "值得期待", "积极向上"
+            ];
+            return prospects[Math.floor(Math.random() * prospects.length)];
+        }
+        
+        // 分享功能
+        function shareToWechat() {
+            unlockFinalAnalysis();
+            alert('请使用微信扫描二维码分享给好友\n\n(在实际应用中，这里会生成二维码)');
+        }
+        
+        function shareToQQ() {
+            unlockFinalAnalysis();
+            alert('已复制分享内容到剪贴板，请到QQ中粘贴发送！');
+        }
+        
+        function shareToWeibo() {
+            unlockFinalAnalysis();
+            const text = `我和TA的名字配对测试结果高达${document.getElementById('percentage').textContent}！快来试试你的缘分指数吧！`;
+            const url = window.location.href;
+            window.open(`http://service.weibo.com/share/share.php?url=${encodeURIComponent(url)}&title=${encodeURIComponent(text)}`, '_blank');
+        }
+        
+        function copyLink() {
+            unlockFinalAnalysis();
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('链接已复制到剪贴板！');
+            });
+        }
+        
+        // 解锁最终分析
+        function unlockFinalAnalysis() {
+            const finalAnalysisContent = document.getElementById('finalAnalysisContent');
+            const lockIcon = document.querySelector('.lock-icon');
+            const unlockPrompt = document.querySelector('.unlock-prompt');
+            
+            finalAnalysisContent.style.filter = 'none';
+            finalAnalysisContent.style.color = 'rgba(255, 255, 255, 0.9)';
+            finalAnalysisContent.style.userSelect = 'text';
+            lockIcon.style.display = 'none';
+            unlockPrompt.style.display = 'none';
+            
+            // 显示解锁成功提示
+            alert('恭喜！最终分析报告已解锁！');
+        }
+        
+        // 发送记录到邮箱（使用EmailJS）
+        function sendRecordToEmail(name1, name2) {
+            // 生成匹配度
+            const matchPercentage = Math.floor(Math.random() * 30) + 70;
+            
+            // 准备邮件参数
+            const templateParams = {
+                name1: name1,
+                name2: name2,
+                timestamp: new Date().toLocaleString(),
+                match_percentage: matchPercentage + '%',
+                analysis_summary: `经过分析，${name1}和${name2}的缘分指数为${matchPercentage}%，匹配度${matchPercentage >= 90 ? '极高' : matchPercentage >= 80 ? '较高' : '良好'}。`
+            };
+            
+            // 发送邮件
+            emailjs.send('service_8veumvq', 'template_obnmv9g', templateParams)
+                .then(function(response) {
+                    console.log('邮件发送成功!', response.status, response.text);
+                    // 显示成功通知
+                    document.getElementById('notification').style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('notification').style.display = 'none';
+                    }, 3000);
+                }, function(error) {
+                    console.log('邮件发送失败...', error);
+                    // 即使发送失败也不影响用户体验
+                });
+        }
+    </script>
+</body>
+</html>
