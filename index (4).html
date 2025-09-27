@@ -1,0 +1,2074 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>击败渣男</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义颜色和动画 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#e63946',
+                        secondary: '#457b9d',
+                        accent: '#f1faee',
+                        dark: '#1d3557',
+                        light: '#f1faee',
+                        retro: '#ffd166',
+                        skill: '#ffd166',      // 技能名称颜色
+                        character: '#38bdf8',  // 角色名字颜色
+                        critical: '#ff6b6b',   // 暴击伤害颜色
+                    },
+                    fontFamily: {
+                        pixel: ['"Press Start 2P"', 'cursive', 'sans-serif'],
+                    },
+                    keyframes: {
+                        slideDown: {
+                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        },
+                        shiftDown: {
+                            '0%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(5px)' },
+                            '100%': { transform: 'translateY(0)' }
+                        }
+                    },
+                    animation: {
+                        'slide-down': 'slideDown 0.3s ease-out forwards',
+                        'shift-down': 'shiftDown 0.4s ease-out forwards'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .game-border {
+                /* 移除黄色边框图案，解决不规则线条问题 */
+                border-width: 0;
+                border-style: none;
+            }
+            .control-btn {
+                @apply flex items-center justify-center rounded-lg touch-manipulation active:scale-90 transition-transform duration-100 shadow-lg;
+            }
+            .control-btn:disabled, .control-btn.disabled {
+                @apply bg-gray-600 cursor-not-allowed opacity-70 active:scale-100;
+            }
+            .skill-btn {
+                @apply control-btn text-xs md:text-sm text-light rounded-full relative overflow-hidden;
+            }
+            .skill-btn:disabled, .skill-btn.disabled {
+                @apply bg-gray-600 cursor-not-allowed opacity-70 active:scale-100;
+            }
+            .retro-text {
+                text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+            }
+            .game-shadow {
+                box-shadow: 0 0 0 4px #1d3557, 
+                            0 0 0 8px #457b9d,
+                            0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            }
+            .skill-text {
+                color: #ffd166;
+                font-weight: bold;
+            }
+            .character-text {
+                color: #38bdf8;
+                font-weight: bold;
+            }
+            .critical-text {
+                color: #ff6b6b;
+                font-weight: bold;
+            }
+            .new-indicator {
+                @apply inline-block bg-red-500 text-white text-[8px] px-1 rounded mr-1;
+            }
+        }
+    </style>
+    
+    <!-- 引入像素风格字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center p-4 text-light">
+    <!-- 游戏容器 -->
+    <div class="max-w-md w-full mx-auto">
+        <!-- 复古游戏机外壳 -->
+        <div class="bg-dark rounded-3xl p-4 md:p-6 game-shadow transform rotate-0 hover:rotate-[0.5deg] transition-transform duration-300">
+            <!-- 游戏机顶部 - 屏幕区域 -->
+            <div class="mb-6 bg-gray-800 rounded-xl p-3 game-border relative overflow-hidden">
+                <!-- 游戏标题 -->
+                <div class="text-retro text-center text-xs md:text-sm mb-2 font-pixel retro-text">击败渣男</div>
+                
+                <!-- 游戏画布 -->
+                <canvas id="gameCanvas" class="w-full aspect-[4/3] bg-gray-900 rounded-lg overflow-hidden"></canvas>
+                
+                <!-- 血条区域 -->
+                <div class="flex justify-between mt-2 px-2">
+                    <!-- 主角血条 -->
+                    <div class="flex-1 mr-2">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-green-400">祝信屿</span>
+                            <span id="playerHealthText" class="text-green-400">100/100</span>
+                        </div>
+                        <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div id="playerHealthBar" class="h-full bg-green-500 w-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 敌方血条 -->
+                    <div class="flex-1 ml-2">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-red-400">潘燧画</span>
+                            <span id="enemyHealthText" class="text-red-400">1000/1000</span>
+                        </div>
+                        <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div id="enemyHealthBar" class="h-full bg-red-500 w-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 战斗日志文本框 - 支持新标签和下滑动画 -->
+                <div class="mt-2 bg-gray-800/80 rounded-lg p-2 h-24 overflow-hidden relative">
+                    <div class="text-xs text-gray-300 absolute top-1 left-2">战斗记录</div>
+                    <div id="battleLog" class="text-xs md:text-sm mt-4 space-y-1 overflow-y-auto h-[calc(100%-1rem)]">
+                        <!-- 战斗记录会在这里动态添加 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 游戏机底部 - 控制区域 -->
+            <div class="flex justify-between">
+                <!-- 方向控制 -->
+                <div class="w-36 h-36 relative">
+                    <!-- 上 -->
+                    <div id="upBtn" class="control-btn absolute left-1/2 -translate-x-1/2 top-0 w-12 h-12 bg-secondary">
+                        <i class="fa fa-arrow-up text-light"></i>
+                    </div>
+                    <!-- 左 -->
+                    <div id="leftBtn" class="control-btn absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-secondary">
+                        <i class="fa fa-arrow-left text-light"></i>
+                    </div>
+                    <!-- 下 -->
+                    <div id="downBtn" class="control-btn absolute left-1/2 -translate-x-1/2 bottom-0 w-12 h-12 bg-secondary">
+                        <i class="fa fa-arrow-down text-light"></i>
+                    </div>
+                    <!-- 右 -->
+                    <div id="rightBtn" class="control-btn absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-secondary">
+                        <i class="fa fa-arrow-right text-light"></i>
+                    </div>
+                </div>
+                
+                <!-- 技能按钮 -->
+                <div class="grid grid-cols-2 gap-3 w-36">
+                    <!-- 技能1 -->
+                    <div class="skill-btn bg-primary h-16" id="skill1Btn">
+                        <div>普通攻击</div>
+                        <div id="skill1Cd" class="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs opacity-0">0s</div>
+                    </div>
+                    <!-- 技能2 -->
+                    <div class="skill-btn bg-purple-600 h-16" id="skill2Btn">
+                        <div>召唤助手</div>
+                        <div id="skill2Cd" class="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs opacity-0">0s</div>
+                    </div>
+                    <!-- 技能3 -->
+                    <div class="skill-btn bg-green-600 h-16" id="skill3Btn">
+                        <div>同频恢复</div>
+                        <div id="skill3Cd" class="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs opacity-0">0s</div>
+                    </div>
+                    <!-- 技能4 -->
+                    <div class="skill-btn bg-blue-600 h-16" id="skill4Btn">
+                        <div>真爱守护</div>
+                        <div id="skill4Cd" class="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs opacity-0">0s</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 胜利和失败对话框 (默认隐藏) -->
+            <div id="winScreen" class="fixed inset-0 bg-dark/95 flex flex-col items-center justify-center z-50 hidden">
+                <div class="text-center p-6 max-w-xs">
+                    <!-- 胜利结语格式调整：大字、中字、小字层级 -->
+                    <div class="text-retro text-xl md:text-2xl mb-3 font-pixel retro-text">恭喜你击败了渣男潘燧画！</div>
+                    <div class="text-retro text-lg md:text-xl mb-4 font-pixel retro-text">祝信屿你是最棒的！</div>
+                    <p class="text-light text-sm md:text-base mb-6">你这样厉害的女人，做什么都会成功的！</p>
+                    <button id="winRestartBtn" class="bg-primary hover:bg-primary/80 text-light py-3 px-6 rounded-lg font-pixel text-sm transition-all transform hover:scale-105 active:scale-95">
+                        再打一次渣男
+                    </button>
+                </div>
+            </div>
+            
+            <div id="loseScreen" class="fixed inset-0 bg-dark/95 flex flex-col items-center justify-center z-50 hidden">
+                <div class="text-center p-6 max-w-xs">
+                    <h2 class="text-retro text-lg md:text-xl mb-4 font-pixel retro-text">你失败了</h2>
+                    <p class="text-light text-sm mb-6">不要灰心，再试一次，一定能打败他！</p>
+                    <button id="loseRestartBtn" class="bg-primary hover:bg-primary/80 text-light py-3 px-6 rounded-lg font-pixel text-sm transition-all transform hover:scale-105 active:scale-95">
+                        重新挑战
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 游戏说明 -->
+        <div class="mt-4 text-center text-gray-400 text-xs">
+            操控祝信屿打败渣男潘燧画
+        </div>
+    </div>
+
+    <script>
+        // 游戏初始化
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 获取所有控制按钮
+        const controlButtons = [
+            document.getElementById('upBtn'),
+            document.getElementById('downBtn'),
+            document.getElementById('leftBtn'),
+            document.getElementById('rightBtn'),
+            document.getElementById('skill1Btn'),
+            document.getElementById('skill2Btn'),
+            document.getElementById('skill3Btn'),
+            document.getElementById('skill4Btn')
+        ];
+        
+        // 设置Canvas尺寸以匹配显示尺寸
+        function resizeCanvas() {
+            const { width, height } = canvas.getBoundingClientRect();
+            canvas.width = width;
+            canvas.height = height;
+        }
+        
+        // 初始化时调整尺寸
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 粒子特效类
+        class Particle {
+            constructor(x, y, color, size = 3) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = size;
+                this.speedX = (Math.random() - 0.5) * 2;
+                this.speedY = (Math.random() - 0.5) * 2;
+                this.alpha = 1;
+                this.life = Math.random() * 60 + 60;
+            }
+            
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.alpha -= 0.01;
+                this.life--;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        
+        // 魔法粒子类（用于治疗效果）
+        class HealParticle {
+            constructor(x, y, targetX, targetY) {
+                this.x = x;
+                this.y = y;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.color = '#10b981';
+                this.size = 2;
+                this.speed = 0.8;
+                this.alpha = 1;
+                this.reachedTarget = false;
+            }
+            
+            update() {
+                const dx = this.targetX - this.x;
+                const dy = this.targetY - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < this.speed) {
+                    this.x = this.targetX;
+                    this.y = this.targetY;
+                    this.reachedTarget = true;
+                    this.alpha -= 0.05;
+                } else {
+                    this.x += (dx / distance) * this.speed;
+                    this.y += (dy / distance) * this.speed;
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        
+        // 抛射物类（用于敌方远程攻击 - 直线必中）
+        class Projectile {
+            constructor(x, y, targetX, targetY, color = '#f87171') {
+                this.x = x;
+                this.y = y;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.color = color;
+                this.size = 4;
+                this.speed = 5;
+                this.active = true;
+                
+                const dx = targetX - x;
+                const dy = targetY - y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                this.vx = (dx / distance) * this.speed;
+                this.vy = (dy / distance) * this.speed;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                const dx = this.targetX - this.x;
+                const dy = this.targetY - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < this.speed) {
+                    this.active = false;
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = this.color;
+                ctx.globalAlpha = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(this.x - this.vx * 2, this.y - this.vy * 2);
+                ctx.lineTo(this.x, this.y);
+                ctx.stroke();
+                ctx.restore();
+            }
+            
+            checkHit() {
+                return !this.active;
+            }
+        }
+        
+        // 游戏状态
+        const gameState = {
+            player: {
+                x: 100,
+                y: 200,
+                width: 30,
+                height: 50,
+                speed: 4,
+                jumpPower: 10,
+                velocityY: 0,
+                isJumping: false,
+                isCrouching: false,
+                health: 100,
+                maxHealth: 100,
+                shield: false,
+                shieldEndTime: 0,
+                skillsFrozen: false,
+                frozenUntil: 0,
+                name: "祝信屿",
+                color: '#10b981', // 玩家绿色
+                isAttacking: false,
+                attackTimer: 0,
+                solidShieldUsed: false
+            },
+            enemy: {
+                x: 400,
+                y: 200,
+                width: 30,
+                height: 50,
+                speed: 2,
+                velocityY: 0,
+                isJumping: false,
+                isCrouching: false,
+                health: 1000,
+                maxHealth: 1000,
+                isEvasive: false,
+                evasiveUntil: 0,
+                isGhosted: false,
+                ghostedUntil: 0,
+                isFrozen: false,  // 是否被冻结
+                frozenUntil: 0,   // 冻结结束时间
+                name: "潘燧画",
+                color: '#ef4444', // 敌人红色
+                isAttacking: false,
+                attackTimer: 0,
+                lastAttackTime: 0
+            },
+            // 祝芯花角色
+            zhuXinhua: {
+                active: false,
+                x: 0,
+                y: 0,
+                timer: 0,
+                name: "祝芯花",
+                color: '#f97316',
+                particles: [],
+                totalHeal: 50,   // 总治疗量
+                remainingHeal: 0 // 剩余治疗量
+            },
+            projectiles: [],
+            helpers: {
+                zengQingwei: { 
+                    active: false, 
+                    x: -50,
+                    y: 0, 
+                    timer: 0,
+                    name: "曾擎危",
+                    color: '#9333ea',
+                    particles: [],
+                    state: 'entering',
+                    targetX: 0,
+                    knockbackTarget: false,
+                    damageDealt: false // 新增：标记是否已造成伤害
+                },
+                chenJiulong: { 
+                    active: false, 
+                    x: 0, 
+                    y: 0, 
+                    timer: 0,
+                    name: "陈酒龍",
+                    color: '#10b981',
+                    particles: [],
+                    healParticles: [],
+                    totalHeal: 0,
+                    remainingHeal: 0
+                },
+                zhouJiatao: { 
+                    active: false, 
+                    x: 0, 
+                    y: 0, 
+                    timer: 0,
+                    name: "周岬韬",
+                    color: '#3b82f6',
+                    particles: [],
+                    state: 'appearing',
+                    shieldCreated: false
+                }
+            },
+            map: {
+                width: canvas.width,
+                height: canvas.height,
+                groundY: 250
+            },
+            keys: {
+                up: false,
+                down: false,
+                left: false,
+                right: false
+            },
+            skills: {
+                skill1: { cooldown: 0, maxCooldown: 800 },
+                skill2: { cooldown: 0, maxCooldown: 5000 },
+                skill3: { cooldown: 0, maxCooldown: 5000 },
+                skill4: { cooldown: 0, maxCooldown: 5000 }
+            },
+            damageTexts: [],
+            lastEnemySkillTime: 0,
+            gameOver: false,
+            gameWon: false,
+            particles: []
+        };
+        
+        // DOM元素引用
+        const playerHealthBar = document.getElementById('playerHealthBar');
+        const playerHealthText = document.getElementById('playerHealthText');
+        const enemyHealthBar = document.getElementById('enemyHealthBar');
+        const enemyHealthText = document.getElementById('enemyHealthText');
+        const battleLog = document.getElementById('battleLog');
+        const winScreen = document.getElementById('winScreen');
+        const loseScreen = document.getElementById('loseScreen');
+        const winRestartBtn = document.getElementById('winRestartBtn');
+        const loseRestartBtn = document.getElementById('loseRestartBtn');
+        const skillCds = {
+            1: document.getElementById('skill1Cd'),
+            2: document.getElementById('skill2Cd'),
+            3: document.getElementById('skill3Cd'),
+            4: document.getElementById('skill4Cd')
+        };
+        
+        // 更新按钮状态（启用/禁用）
+        function updateButtonStates() {
+            const isFrozen = gameState.player.skillsFrozen && Date.now() < gameState.player.frozenUntil;
+            
+            controlButtons.forEach(button => {
+                if (isFrozen) {
+                    button.classList.add('disabled');
+                    button.disabled = true;
+                    gameState.keys.up = false;
+                    gameState.keys.down = false;
+                    gameState.keys.left = false;
+                    gameState.keys.right = false;
+                } else {
+                    button.classList.remove('disabled');
+                    button.disabled = false;
+                }
+            });
+        }
+        
+        // 控制按钮 - 增强手机触摸支持
+        const setupControlButtons = () => {
+            const upBtn = document.getElementById('upBtn');
+            const downBtn = document.getElementById('downBtn');
+            const leftBtn = document.getElementById('leftBtn');
+            const rightBtn = document.getElementById('rightBtn');
+            
+            // 触摸事件
+            upBtn.addEventListener('touchstart', (e) => {
+                if (upBtn.disabled) return;
+                e.preventDefault();
+                gameState.keys.up = true;
+            });
+            upBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                gameState.keys.up = false;
+            });
+            
+            downBtn.addEventListener('touchstart', (e) => {
+                if (downBtn.disabled) return;
+                e.preventDefault();
+                gameState.keys.down = true;
+            });
+            downBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                gameState.keys.down = false;
+            });
+            
+            leftBtn.addEventListener('touchstart', (e) => {
+                if (leftBtn.disabled) return;
+                e.preventDefault();
+                gameState.keys.left = true;
+            });
+            leftBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                gameState.keys.left = false;
+            });
+            
+            rightBtn.addEventListener('touchstart', (e) => {
+                if (rightBtn.disabled) return;
+                e.preventDefault();
+                gameState.keys.right = true;
+            });
+            rightBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                gameState.keys.right = false;
+            });
+            
+            // 鼠标点击事件
+            upBtn.addEventListener('mousedown', () => {
+                if (!upBtn.disabled) gameState.keys.up = true;
+            });
+            upBtn.addEventListener('mouseup', () => gameState.keys.up = false);
+            upBtn.addEventListener('mouseleave', () => gameState.keys.up = false);
+            
+            downBtn.addEventListener('mousedown', () => {
+                if (!downBtn.disabled) gameState.keys.down = true;
+            });
+            downBtn.addEventListener('mouseup', () => gameState.keys.down = false);
+            downBtn.addEventListener('mouseleave', () => gameState.keys.down = false);
+            
+            leftBtn.addEventListener('mousedown', () => {
+                if (!leftBtn.disabled) gameState.keys.left = true;
+            });
+            leftBtn.addEventListener('mouseup', () => gameState.keys.left = false);
+            leftBtn.addEventListener('mouseleave', () => gameState.keys.left = false);
+            
+            rightBtn.addEventListener('mousedown', () => {
+                if (!rightBtn.disabled) gameState.keys.right = true;
+            });
+            rightBtn.addEventListener('mouseup', () => gameState.keys.right = false);
+            rightBtn.addEventListener('mouseleave', () => gameState.keys.right = false);
+        };
+        
+        // 初始化控制按钮
+        setupControlButtons();
+        
+        // 技能按钮点击事件
+        document.getElementById('skill1Btn').addEventListener('click', () => {
+            if (!document.getElementById('skill1Btn').disabled) {
+                useSkill(1);
+            }
+        });
+        document.getElementById('skill2Btn').addEventListener('click', () => {
+            if (!document.getElementById('skill2Btn').disabled) {
+                useSkill(2);
+            }
+        });
+        document.getElementById('skill3Btn').addEventListener('click', () => {
+            if (!document.getElementById('skill3Btn').disabled) {
+                useSkill(3);
+            }
+        });
+        document.getElementById('skill4Btn').addEventListener('click', () => {
+            if (!document.getElementById('skill4Btn').disabled) {
+                useSkill(4);
+            }
+        });
+        
+        // 重新开始按钮
+        winRestartBtn.addEventListener('click', restartGame);
+        loseRestartBtn.addEventListener('click', restartGame);
+        
+        // 防止触摸时页面滚动
+        document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        
+        // 键盘控制
+        window.addEventListener('keydown', (e) => {
+            if (gameState.player.skillsFrozen && Date.now() < gameState.player.frozenUntil) {
+                return;
+            }
+            
+            switch(e.key) {
+                case 'ArrowUp': gameState.keys.up = true; break;
+                case 'ArrowDown': gameState.keys.down = true; break;
+                case 'ArrowLeft': gameState.keys.left = true; break;
+                case 'ArrowRight': gameState.keys.right = true; break;
+                case '1': useSkill(1); break;
+                case '2': useSkill(2); break;
+                case '3': useSkill(3); break;
+                case '4': useSkill(4); break;
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            switch(e.key) {
+                case 'ArrowUp': gameState.keys.up = false; break;
+                case 'ArrowDown': gameState.keys.down = false; break;
+                case 'ArrowLeft': gameState.keys.left = false; break;
+                case 'ArrowRight': gameState.keys.right = false; break;
+            }
+        });
+        
+        // 添加战斗日志 - 带新标签和下滑动画
+        function addBattleLog(text) {
+            const logEntry = document.createElement('div');
+            
+            let formattedText = text
+                .replace(/祝信屿/g, '<span class="character-text">祝信屿</span>')
+                .replace(/潘燧画/g, '<span class="character-text">潘燧画</span>')
+                .replace(/曾擎危/g, '<span class="character-text">曾擎危</span>')
+                .replace(/陈酒龍/g, '<span class="character-text">陈酒龍</span>')
+                .replace(/周岬韬/g, '<span class="character-text">周岬韬</span>')
+                .replace(/祝芯花/g, '<span class="character-text">祝芯花</span>');
+            
+            // 只对技能名称添加高亮和《》符号
+            formattedText = formattedText.replace(/《(.*?)》/g, '<span class="skill-text">《$1》</span>');
+            formattedText = formattedText.replace(/暴击/g, '<span class="critical-text">暴击</span>');
+            
+            // 移除所有现有日志的"新"标签
+            const existingEntries = battleLog.querySelectorAll('.log-entry');
+            existingEntries.forEach(entry => {
+                const newTag = entry.querySelector('.new-indicator');
+                if (newTag) newTag.remove();
+            });
+            
+            // 为新日志添加"新"标签和动画
+            logEntry.innerHTML = `<span class="new-indicator">新</span>${formattedText}`;
+            logEntry.className = 'log-entry animate-slide-down';
+            
+            // 在最上方添加新日志
+            if (battleLog.firstChild) {
+                battleLog.insertBefore(logEntry, battleLog.firstChild);
+            } else {
+                battleLog.appendChild(logEntry);
+            }
+            
+            // 触发旧文本下滑动画
+            battleLog.classList.add('animate-shift-down');
+            setTimeout(() => {
+                battleLog.classList.remove('animate-shift-down');
+            }, 400);
+            
+            // 限制日志数量
+            if (battleLog.children.length > 15) {
+                battleLog.removeChild(battleLog.lastChild);
+            }
+            
+            // 自动滚动到顶部，显示最新日志
+            battleLog.scrollTop = 0;
+        }
+        
+        // 显示伤害文本 - 确保伤害数字为红色
+        function showDamageText(x, y, value, type = 'damage', isPlayer = false) {
+            let prefix = '';
+            let color = '#ff6b6b'; // 所有伤害数字都为红色
+            let fontSize = 14; // 增大字体确保可见
+            let fontWeight = 'bold';
+            
+            switch(type) {
+                case 'damage':
+                    prefix = '-';
+                    break;
+                case 'critical':
+                    prefix = '-';
+                    fontSize = 16;
+                    fontWeight = 'bold';
+                    break;
+                case 'heal':
+                    prefix = '+';
+                    color = '#4ade80'; // 治疗仍为绿色
+                    break;
+            }
+            
+            gameState.damageTexts.push({
+                x, y,
+                text: `${prefix}${value}`,
+                color,
+                alpha: 1,
+                timer: 90,
+                fontSize,
+                fontWeight
+            });
+        }
+        
+        // 创建粒子效果
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                gameState.particles.push(new Particle(x, y, color));
+            }
+        }
+        
+        // 检查是否近身
+        function isClose(player, target) {
+            return Math.abs(player.x - target.x) < 50;
+        }
+        
+        // 使用技能
+        function useSkill(skillId) {
+            const now = Date.now();
+            const skill = gameState.skills[`skill${skillId}`];
+            
+            if (gameState.gameOver) return;
+            
+            if (gameState.player.skillsFrozen && now < gameState.player.frozenUntil) {
+                addBattleLog("技能被冻结了，无法使用！");
+                return;
+            }
+            
+            if (skill.cooldown > now) {
+                return;
+            }
+            
+            switch(skillId) {
+                case 1: // 普通攻击 - 不使用技能格式显示
+                    if (isClose(gameState.player, gameState.enemy)) {
+                        gameState.player.isAttacking = true;
+                        gameState.player.attackTimer = 20;
+                        
+                        setTimeout(() => {
+                            // 检查敌方是否被冻结
+                            if (gameState.enemy.isFrozen && Date.now() < gameState.enemy.frozenUntil) {
+                                // 冻结状态下伤害增加20%
+                                const baseDamage = Math.floor(Math.random() * 51);
+                                const damage = Math.floor(baseDamage * 1.2);
+                                const isCritical = Math.random() < 0.15; // 冻结时暴击率提高
+                                const finalDamage = isCritical ? damage * 2 : damage;
+                                
+                                gameState.enemy.health = Math.max(0, gameState.enemy.health - finalDamage);
+                                
+                                if (isCritical) {
+                                    showDamageText(gameState.enemy.x, gameState.enemy.y - 20, finalDamage, 'critical', false);
+                                    addBattleLog(`祝信屿的普通攻击对被冻结的潘燧画造成了${finalDamage}点暴击伤害！`);
+                                } else {
+                                    showDamageText(gameState.enemy.x, gameState.enemy.y - 20, finalDamage, 'damage', false);
+                                    addBattleLog(`祝信屿的普通攻击对被冻结的潘燧画造成了${finalDamage}点伤害！`);
+                                }
+                                
+                                createParticles(gameState.enemy.x, gameState.enemy.y, '#f87171', 8);
+                                gameState.enemy.x += gameState.player.x < gameState.enemy.x ? 10 : -10;
+                                
+                                updateHealthBars();
+                                checkGameOver();
+                            } else {
+                                const damage = Math.floor(Math.random() * 51);
+                                if (damage > 0) {
+                                    const isCritical = Math.random() < 0.1;
+                                    const finalDamage = isCritical ? damage * 2 : damage;
+                                    
+                                    if (gameState.enemy.isGhosted && now < gameState.enemy.ghostedUntil) {
+                                        addBattleLog(`祝信屿的普通攻击被潘燧画的《已读不回》闪避了！`);
+                                    } else {
+                                        gameState.enemy.health = Math.max(0, gameState.enemy.health - finalDamage);
+                                        
+                                        if (isCritical) {
+                                            showDamageText(gameState.enemy.x, gameState.enemy.y - 20, finalDamage, 'critical', false);
+                                            addBattleLog(`祝信屿的普通攻击对潘燧画造成了${finalDamage}点暴击伤害！`);
+                                        } else {
+                                            showDamageText(gameState.enemy.x, gameState.enemy.y - 20, finalDamage, 'damage', false);
+                                            addBattleLog(`祝信屿的普通攻击对潘燧画造成了${finalDamage}点伤害！`);
+                                        }
+                                        
+                                        createParticles(gameState.enemy.x, gameState.enemy.y, '#f87171', 8);
+                                        gameState.enemy.x += gameState.player.x < gameState.enemy.x ? 10 : -10;
+                                        
+                                        updateHealthBars();
+                                        checkGameOver();
+                                    }
+                                } else {
+                                    addBattleLog(`祝信屿的普通攻击没有造成伤害！`);
+                                }
+                            }
+                        }, 200);
+                        
+                        skill.cooldown = now + skill.maxCooldown;
+                        updateSkillCooldowns();
+                    } else {
+                        addBattleLog(`距离太远，无法进行普通攻击！`);
+                        return;
+                    }
+                    break;
+                    
+                case 2: // 召唤助手 - 曾擎危
+                    const damage = 200 + Math.floor(Math.random() * 301);
+                    
+                    gameState.helpers.zengQingwei = {
+                        active: true,
+                        x: -30,
+                        y: gameState.map.groundY - 40,
+                        timer: 450,
+                        name: "曾擎危",
+                        color: '#9333ea',
+                        particles: [],
+                        state: 'entering',
+                        targetX: gameState.enemy.x,
+                        knockbackTarget: false,
+                        damageDealt: false,
+                        damage: damage // 存储伤害值以便后续使用
+                    };
+                    
+                    addBattleLog(`祝信屿召唤了曾擎危使用《召唤助手》！`);
+                    createParticles(-20, gameState.map.groundY - 40, '#9333ea', 10);
+                    
+                    skill.cooldown = now + skill.maxCooldown;
+                    updateSkillCooldowns();
+                    break;
+                    
+                case 3: // 同频恢复 - 陈酒龍
+                    const totalHeal = 10 + Math.floor(Math.random() * 41);
+                    
+                    addBattleLog(`祝信屿召唤了陈酒龍使用《同频恢复》，开始恢复生命值！`);
+                    
+                    gameState.helpers.chenJiulong = {
+                        active: true,
+                        x: gameState.player.x - 40,
+                        y: gameState.player.y,
+                        timer: 450,
+                        name: "陈酒龍",
+                        color: '#10b981',
+                        particles: [],
+                        healParticles: [],
+                        totalHeal: totalHeal,
+                        remainingHeal: totalHeal
+                    };
+                    
+                    createParticles(gameState.player.x - 40, gameState.player.y, '#10b981', 10);
+                    
+                    skill.cooldown = now + skill.maxCooldown;
+                    updateSkillCooldowns();
+                    break;
+                    
+                case 4: // 真爱守护 - 周岬韬 (5秒免疫伤害)
+                    addBattleLog(`祝信屿召唤了周岬韬使用《真爱守护》，获得5秒伤害免疫！`);
+                    
+                    // 直接添加护盾效果，持续5秒
+                    gameState.player.shield = true;
+                    gameState.player.shieldEndTime = Date.now() + 5000;
+                    
+                    // 初始化周岬韬状态 - 从左侧进入
+                    gameState.helpers.zhouJiatao = {
+                        active: true,
+                        x: -30,  // 左侧屏幕外
+                        y: gameState.player.y,
+                        timer: 300,
+                        name: "周岬韬",
+                        color: '#3b82f6',
+                        particles: [],
+                        state: 'appearing',
+                        shieldCreated: true
+                    };
+                    
+                    createParticles(-30, gameState.player.y, '#3b82f6', 10);
+                    
+                    // 护盾创建特效
+                    for (let i = 0; i < 15; i++) {
+                        gameState.particles.push(new Particle(
+                            gameState.player.x,
+                            gameState.player.y + 20,
+                            '#3b82f6',
+                            3
+                        ));
+                    }
+                    
+                    skill.cooldown = now + skill.maxCooldown;
+                    updateSkillCooldowns();
+                    break;
+            }
+        }
+        
+        // 敌方普通攻击
+        function enemyBasicAttack() {
+            const now = Date.now();
+            
+            // 检查是否被冻结
+            if (gameState.enemy.isFrozen && now < gameState.enemy.frozenUntil) {
+                return;
+            }
+            
+            if (now - gameState.enemy.lastAttackTime < 2000) {
+                return;
+            }
+            
+            if (isClose(gameState.enemy, gameState.player)) {
+                gameState.enemy.isAttacking = true;
+                gameState.enemy.attackTimer = 20;
+                gameState.enemy.lastAttackTime = now;
+                
+                setTimeout(() => {
+                    const damage = 5 + Math.floor(Math.random() * 6);
+                    
+                    // 检查玩家是否有护盾
+                    if (gameState.player.shield && now < gameState.player.shieldEndTime) {
+                        addBattleLog(`潘燧画的普通攻击被祝信屿的护盾抵挡了！`);
+                    } else if (gameState.player.shield) {
+                        // 护盾已过期
+                        gameState.player.shield = false;
+                        gameState.player.health = Math.max(0, gameState.player.health - damage);
+                        showDamageText(gameState.player.x, gameState.player.y - 20, damage, 'damage', true);
+                        addBattleLog(`潘燧画的普通攻击对祝信屿造成了${damage}点伤害！`);
+                        createParticles(gameState.player.x, gameState.player.y, '#f87171', 8);
+                        gameState.player.x += gameState.enemy.x < gameState.player.x ? 10 : -10;
+                        updateHealthBars();
+                    } else {
+                        gameState.player.health = Math.max(0, gameState.player.health - damage);
+                        showDamageText(gameState.player.x, gameState.player.y - 20, damage, 'damage', true);
+                        addBattleLog(`潘燧画的普通攻击对祝信屿造成了${damage}点伤害！`);
+                        createParticles(gameState.player.x, gameState.player.y, '#f87171', 8);
+                        gameState.player.x += gameState.enemy.x < gameState.player.x ? 10 : -10;
+                        updateHealthBars();
+                    }
+                }, 200);
+            }
+        }
+        
+        // 执行忙碌攻击
+        function performBusyAttack() {
+            // 检查是否被冻结
+            if (gameState.enemy.isFrozen && Date.now() < gameState.enemy.frozenUntil) {
+                return;
+            }
+            
+            gameState.enemy.isAttacking = true;
+            gameState.enemy.attackTimer = 30;
+            
+            setTimeout(() => {
+                const projectile = new Projectile(
+                    gameState.enemy.x, 
+                    gameState.enemy.y + 10, 
+                    gameState.player.x, 
+                    gameState.player.y + 10,
+                    '#f87171'
+                );
+                gameState.projectiles.push(projectile);
+                addBattleLog(`潘燧画使用了《忙碌攻击》，投掷了一个远程攻击！`);
+            }, 150);
+        }
+        
+        // 敌方使用技能
+        function enemyUseSkill() {
+            const now = Date.now();
+            
+            // 检查是否被冻结
+            if (gameState.enemy.isFrozen && now < gameState.enemy.frozenUntil) {
+                return;
+            }
+            
+            if (now - gameState.lastEnemySkillTime < 4000) {
+                return;
+            }
+            
+            gameState.lastEnemySkillTime = now;
+            const skillId = Math.floor(Math.random() * 4) + 1;
+            
+            switch(skillId) {
+                case 1: // 忙碌攻击
+                    performBusyAttack();
+                    break;
+                    
+                case 2: // 已读不回
+                    gameState.enemy.isGhosted = true;
+                    gameState.enemy.ghostedUntil = now + 3000;
+                    addBattleLog(`潘燧画使用了《已读不回》，3秒内免疫所有伤害！`);
+                    createParticles(gameState.enemy.x, gameState.enemy.y, '#9ca3af', 15);
+                    break;
+                    
+                case 3: // 逃避责任
+                    gameState.enemy.isEvasive = true;
+                    gameState.enemy.evasiveUntil = now + 2000;
+                    addBattleLog(`潘燧画使用了《逃避责任》，开始逃跑！`);
+                    createParticles(gameState.enemy.x, gameState.enemy.y, '#6b7280', 15);
+                    break;
+                    
+                case 4: // 冷暴力 - 1秒后使用忙碌攻击
+                    gameState.player.skillsFrozen = true;
+                    gameState.player.frozenUntil = now + 3000;
+                    addBattleLog(`潘燧画使用了《冷暴力》，你被冷暴力中，无法使用技能！`);
+                    createParticles(gameState.player.x, gameState.player.y, '#4b5563', 15);
+                    
+                    setTimeout(performBusyAttack, 1000);
+                    break;
+            }
+        }
+        
+        // 触发坚实后盾技能
+        function triggerSolidShield() {
+            if (gameState.player.solidShieldUsed) return;
+            
+            gameState.player.solidShieldUsed = true;
+            
+            // 初始化祝芯花，总治疗50点，持续10秒
+            gameState.zhuXinhua = {
+                active: true,
+                x: gameState.player.x - 80,  // 从更左侧出现
+                y: gameState.player.y,
+                timer: 600,  // 10秒（600帧）
+                name: "祝芯花",
+                color: '#f97316',
+                particles: [],
+                totalHeal: 50,
+                remainingHeal: 50
+            };
+            
+            // 冻结敌方5秒
+            gameState.enemy.isFrozen = true;
+            gameState.enemy.frozenUntil = Date.now() + 5000;
+            addBattleLog(`《坚实后盾》被触发！祝芯花出现，冻结潘燧画5秒并开始治疗！`);
+            
+            // 创建特效
+            for (let i = 0; i < 20; i++) {
+                gameState.particles.push(new Particle(
+                    gameState.player.x,
+                    gameState.player.y,
+                    '#f97316',
+                    4
+                ));
+            }
+            
+            // 添加冻结特效
+            for (let i = 0; i < 15; i++) {
+                gameState.particles.push(new Particle(
+                    gameState.enemy.x,
+                    gameState.enemy.y,
+                    '#93c5fd',
+                    3
+                ));
+            }
+        }
+        
+        // 绘制祝芯花并处理治疗逻辑
+        function drawZhuXinhua() {
+            const helper = gameState.zhuXinhua;
+            if (!helper.active) return;
+            
+            ctx.save();
+            
+            // 每30帧（约0.5秒）治疗一次
+            if (helper.timer % 30 === 0 && helper.remainingHeal > 0) {
+                const healAmount = 5; // 每次治疗5点
+                gameState.player.health = Math.min(gameState.player.maxHealth, gameState.player.health + healAmount);
+                helper.remainingHeal -= healAmount;
+                
+                showDamageText(gameState.player.x, gameState.player.y - 40, healAmount, 'heal', true);
+                updateHealthBars();
+                
+                // 创建治疗粒子
+                for (let i = 0; i < 5; i++) {
+                    helper.particles.push(new HealParticle(
+                        helper.x + (Math.random() - 0.5) * 20,
+                        helper.y + (Math.random() - 0.5) * 10,
+                        gameState.player.x,
+                        gameState.player.y + 10
+                    ));
+                }
+            }
+            
+            // 创建持续的粒子特效
+            if (helper.timer % 8 === 0) {
+                helper.particles.push(new Particle(
+                    helper.x + (Math.random() - 0.5) * 20,
+                    helper.y + (Math.random() - 0.5) * 20,
+                    helper.color,
+                    2
+                ));
+            }
+            
+            // 更新和绘制粒子
+            for (let i = helper.particles.length - 1; i >= 0; i--) {
+                const p = helper.particles[i];
+                if (p.update) p.update();
+                if (p.draw) p.draw();
+                
+                // 移除生命周期结束的粒子
+                if (p.life <= 0 || (p.reachedTarget && p.alpha <= 0)) {
+                    helper.particles.splice(i, 1);
+                }
+            }
+            
+            // 逐渐靠近主角
+            if (helper.x < gameState.player.x - 30) {
+                helper.x += 0.3;
+            }
+            
+            // 绘制角色
+            drawStickman({
+                x: helper.x,
+                y: helper.y,
+                width: 25,
+                height: 40,
+                color: helper.color,
+                isCrouching: false,
+                name: helper.name,
+                isAttacking: false,
+                attackTimer: 0
+            });
+            
+            // 倒计时结束后消失
+            helper.timer--;
+            if (helper.timer <= 0) {
+                helper.active = false;
+                addBattleLog(`祝芯花完成治疗，共恢复了${helper.totalHeal - helper.remainingHeal}点生命值！`);
+            }
+            
+            ctx.restore();
+        }
+        
+        // 更新抛射物状态
+        function updateProjectiles() {
+            const now = Date.now();
+            for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
+                const projectile = gameState.projectiles[i];
+                projectile.update();
+                
+                if (!projectile.active) {
+                    // 忙碌攻击伤害改为20-30
+                    const damage = 20 + Math.floor(Math.random() * 11);
+                    
+                    // 检查玩家是否有护盾
+                    if (gameState.player.shield && now < gameState.player.shieldEndTime) {
+                        addBattleLog(`潘燧画的《忙碌攻击》被祝信屿的护盾抵挡了！`);
+                    } else if (gameState.player.shield) {
+                        // 护盾已过期
+                        gameState.player.shield = false;
+                        gameState.player.health = Math.max(0, gameState.player.health - damage);
+                        showDamageText(gameState.player.x, gameState.player.y - 20, damage, 'damage', true);
+                        addBattleLog(`潘燧画的《忙碌攻击》对祝信屿造成了${damage}点伤害！`);
+                        createParticles(gameState.player.x, gameState.player.y, '#f87171', 12);
+                        gameState.player.velocityY = -5;
+                        gameState.player.isJumping = true;
+                        updateHealthBars();
+                    } else {
+                        gameState.player.health = Math.max(0, gameState.player.health - damage);
+                        showDamageText(gameState.player.x, gameState.player.y - 20, damage, 'damage', true);
+                        addBattleLog(`潘燧画的《忙碌攻击》对祝信屿造成了${damage}点伤害！`);
+                        createParticles(gameState.player.x, gameState.player.y, '#f87171', 12);
+                        gameState.player.velocityY = -5;
+                        gameState.player.isJumping = true;
+                        updateHealthBars();
+                    }
+                    
+                    gameState.projectiles.splice(i, 1);
+                }
+            }
+        }
+        
+        // 绘制抛射物
+        function drawProjectiles() {
+            gameState.projectiles.forEach(projectile => {
+                if (projectile.active) {
+                    projectile.draw();
+                }
+            });
+        }
+        
+        // 更新技能冷却显示
+        function updateSkillCooldowns() {
+            const now = Date.now();
+            
+            for (let i = 1; i <= 4; i++) {
+                const skill = gameState.skills[`skill${i}`];
+                const cdElement = skillCds[i];
+                
+                if (skill.cooldown > now) {
+                    const remaining = Math.ceil((skill.cooldown - now) / 1000);
+                    cdElement.textContent = `${remaining}s`;
+                    cdElement.classList.remove('opacity-0');
+                    cdElement.classList.add('opacity-100');
+                } else {
+                    cdElement.classList.remove('opacity-100');
+                    cdElement.classList.add('opacity-0');
+                }
+            }
+        }
+        
+        // 更新血条
+        function updateHealthBars() {
+            const playerPercent = (gameState.player.health / gameState.player.maxHealth) * 100;
+            const enemyPercent = (gameState.enemy.health / gameState.enemy.maxHealth) * 100;
+            
+            playerHealthBar.style.width = `${playerPercent}%`;
+            playerHealthText.textContent = `${gameState.player.health}/${gameState.player.maxHealth}`;
+            
+            enemyHealthBar.style.width = `${enemyPercent}%`;
+            enemyHealthText.textContent = `${gameState.enemy.health}/${gameState.enemy.maxHealth}`;
+            
+            if (playerPercent < 30) {
+                playerHealthBar.classList.remove('bg-green-500', 'bg-yellow-500');
+                playerHealthBar.classList.add('bg-red-500');
+            } else if (playerPercent < 60) {
+                playerHealthBar.classList.remove('bg-green-500', 'bg-red-500');
+                playerHealthBar.classList.add('bg-yellow-500');
+            } else {
+                playerHealthBar.classList.remove('bg-yellow-500', 'bg-red-500');
+                playerHealthBar.classList.add('bg-green-500');
+            }
+        }
+        
+        // 检查游戏是否结束
+        function checkGameOver() {
+            const now = Date.now();
+            
+            // 检查玩家护盾是否过期
+            if (gameState.player.shield && now > gameState.player.shieldEndTime) {
+                gameState.player.shield = false;
+                addBattleLog("祝信屿的护盾效果消失了！");
+            }
+            
+            // 检查敌方冻结状态是否结束
+            if (gameState.enemy.isFrozen && now < gameState.enemy.frozenUntil) {
+                // 仍然冻结中
+            } else if (gameState.enemy.isFrozen) {
+                gameState.enemy.isFrozen = false;
+                addBattleLog("潘燧画从冻结状态中恢复了！");
+            }
+            
+            if (gameState.enemy.health <= 0 && !gameState.gameOver) {
+                gameState.gameOver = true;
+                gameState.gameWon = true;
+                winScreen.classList.remove('hidden');
+                addBattleLog("恭喜你击败了渣男潘燧画！");
+                for (let i = 0; i < 50; i++) {
+                    createParticles(
+                        canvas.width / 2 + (Math.random() - 0.5) * 100,
+                        canvas.height / 2 + (Math.random() - 0.5) * 100,
+                        `hsl(${Math.random() * 360}, 100%, 70%)`,
+                        2
+                    );
+                }
+            } else if (gameState.player.health <= 0 && !gameState.gameOver) {
+                // 触发坚实后盾技能
+                if (!gameState.player.solidShieldUsed) {
+                    triggerSolidShield();
+                } else {
+                    gameState.gameOver = true;
+                    gameState.gameWon = false;
+                    loseScreen.classList.remove('hidden');
+                    addBattleLog("战斗失败了...");
+                }
+            }
+        }
+        
+        // 重新开始游戏
+        function restartGame() {
+            controlButtons.forEach(button => {
+                button.classList.remove('disabled');
+                button.disabled = false;
+            });
+            
+            gameState.player = {
+                x: 100,
+                y: 200,
+                width: 30,
+                height: 50,
+                speed: 4,
+                jumpPower: 10,
+                velocityY: 0,
+                isJumping: false,
+                isCrouching: false,
+                health: 100,
+                maxHealth: 100,
+                shield: false,
+                shieldEndTime: 0,
+                skillsFrozen: false,
+                frozenUntil: 0,
+                name: "祝信屿",
+                color: '#10b981',
+                isAttacking: false,
+                attackTimer: 0,
+                solidShieldUsed: false
+            };
+            
+            gameState.enemy = {
+                x: 400,
+                y: 200,
+                width: 30,
+                height: 50,
+                speed: 2,
+                velocityY: 0,
+                isJumping: false,
+                isCrouching: false,
+                health: 1000,
+                maxHealth: 1000,
+                isEvasive: false,
+                evasiveUntil: 0,
+                isGhosted: false,
+                ghostedUntil: 0,
+                isFrozen: false,
+                frozenUntil: 0,
+                name: "潘燧画",
+                color: '#ef4444',
+                isAttacking: false,
+                attackTimer: 0,
+                lastAttackTime: 0
+            };
+            
+            // 重置祝芯花
+            gameState.zhuXinhua = {
+                active: false,
+                x: 0,
+                y: 0,
+                timer: 0,
+                name: "祝芯花",
+                color: '#f97316',
+                particles: [],
+                totalHeal: 50,
+                remainingHeal: 0
+            };
+            
+            gameState.projectiles = [];
+            
+            gameState.helpers = {
+                zengQingwei: { 
+                    active: false, 
+                    x: -50,
+                    y: 0, 
+                    timer: 0,
+                    name: "曾擎危",
+                    color: '#9333ea',
+                    particles: [],
+                    state: 'entering',
+                    targetX: 0,
+                    knockbackTarget: false,
+                    damageDealt: false,
+                    damage: 0
+                },
+                chenJiulong: { 
+                    active: false, 
+                    x: 0, 
+                    y: 0, 
+                    timer: 0,
+                    name: "陈酒龍",
+                    color: '#10b981',
+                    particles: [],
+                    healParticles: [],
+                    totalHeal: 0,
+                    remainingHeal: 0
+                },
+                zhouJiatao: { 
+                    active: false, 
+                    x: 0, 
+                    y: 0, 
+                    timer: 0,
+                    name: "周岬韬",
+                    color: '#3b82f6',
+                    particles: [],
+                    state: 'appearing',
+                    shieldCreated: false
+                }
+            };
+            
+            gameState.skills = {
+                skill1: { cooldown: 0, maxCooldown: 800 },
+                skill2: { cooldown: 0, maxCooldown: 5000 },
+                skill3: { cooldown: 0, maxCooldown: 5000 },
+                skill4: { cooldown: 0, maxCooldown: 5000 }
+            };
+            
+            gameState.damageTexts = [];
+            gameState.particles = [];
+            gameState.lastEnemySkillTime = 0;
+            gameState.gameOver = false;
+            gameState.gameWon = false;
+            
+            battleLog.innerHTML = '';
+            winScreen.classList.add('hidden');
+            loseScreen.classList.add('hidden');
+            
+            updateHealthBars();
+            updateSkillCooldowns();
+            
+            addBattleLog("游戏开始！打败渣男潘燧画！");
+        }
+        
+        // 绘制火柴人
+        function drawStickman(character) {
+            const {x, y, width, height, color, isCrouching, isGhosted = false, isFrozen = false, name, isAttacking, attackTimer} = character;
+            ctx.save();
+            
+            if (isGhosted) {
+                ctx.globalAlpha = 0.5;
+            }
+            
+            // 冻结效果
+            if (isFrozen) {
+                ctx.strokeStyle = '#93c5fd';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(x, y + height * 0.3, height * 0.6, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // 添加冰块效果
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    const offset = height * 0.6;
+                    const iceX = x + Math.cos(angle) * offset;
+                    const iceY = y + height * 0.3 + Math.sin(angle) * offset;
+                    
+                    ctx.fillStyle = '#93c5fd';
+                    ctx.beginPath();
+                    ctx.arc(iceX, iceY, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            const drawHeight = isCrouching ? height * 0.7 : height;
+            const drawY = isCrouching ? y + height * 0.3 : y;
+            
+            // 绘制名字
+            ctx.font = '12px Arial';
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.fillText(name, x, drawY - 15);
+            
+            // 身体
+            ctx.beginPath();
+            ctx.moveTo(x, drawY + drawHeight * 0.2);
+            ctx.lineTo(x, drawY + drawHeight * 0.7);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // 头部
+            ctx.beginPath();
+            ctx.arc(x, drawY + drawHeight * 0.1, drawHeight * 0.1, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            
+            // 手臂
+            const armY = drawY + drawHeight * 0.3;
+            let armLeftX, armLeftY, armRightX, armRightY;
+            
+            if (isAttacking && attackTimer > 0) {
+                const attackProgress = 1 - (attackTimer / 20);
+                const attackOffset = Math.sin(attackProgress * Math.PI) * width;
+                
+                if (name === "祝信屿") {
+                    armLeftX = x - width * 0.5;
+                    armLeftY = armY + drawHeight * 0.1;
+                    armRightX = x + width * 0.5 + attackOffset;
+                    armRightY = armY - drawHeight * 0.1;
+                } else {
+                    armLeftX = x - width * 0.5 - attackOffset;
+                    armLeftY = armY - drawHeight * 0.1;
+                    armRightX = x + width * 0.5;
+                    armRightY = armY + drawHeight * 0.1;
+                }
+            } else {
+                armLeftX = x - width * 0.5;
+                armLeftY = armY + drawHeight * 0.1;
+                armRightX = x + width * 0.5;
+                armRightY = armY + drawHeight * 0.1;
+            }
+            
+            ctx.beginPath();
+            ctx.moveTo(x, armY);
+            ctx.lineTo(armLeftX, armLeftY);
+            ctx.moveTo(x, armY);
+            ctx.lineTo(armRightX, armRightY);
+            ctx.stroke();
+            
+            // 腿部
+            const legY = drawY + drawHeight * 0.7;
+            if (isCrouching) {
+                ctx.beginPath();
+                ctx.moveTo(x, legY);
+                ctx.lineTo(x - width * 0.3, legY + drawHeight * 0.2);
+                ctx.moveTo(x, legY);
+                ctx.lineTo(x + width * 0.3, legY + drawHeight * 0.2);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(x, legY);
+                ctx.lineTo(x - width * 0.3, legY + drawHeight * 0.3);
+                ctx.moveTo(x, legY);
+                ctx.lineTo(x + width * 0.3, legY + drawHeight * 0.3);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        // 绘制曾擎危 - 修改为接触时立即造成伤害
+        function drawZengQingwei(helper) {
+            if (!helper.active) return;
+            
+            ctx.save();
+            
+            if (helper.timer % 8 === 0) {
+                helper.particles.push(new Particle(
+                    helper.x + (Math.random() - 0.5) * 15,
+                    helper.y + (Math.random() - 0.5) * 15,
+                    helper.color,
+                    2
+                ));
+            }
+            
+            for (let i = helper.particles.length - 1; i >= 0; i--) {
+                const p = helper.particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) {
+                    helper.particles.splice(i, 1);
+                }
+            }
+            
+            // 检测是否与敌人接触且尚未造成伤害
+            if (!helper.damageDealt && Math.abs(helper.x - gameState.enemy.x) < 40) {
+                helper.damageDealt = true;
+                helper.state = 'attacking';
+                
+                if (gameState.enemy.isGhosted && Date.now() < gameState.enemy.ghostedUntil) {
+                    addBattleLog(`曾擎危的攻击被潘燧画的《已读不回》闪避了！`);
+                } else {
+                    gameState.enemy.health = Math.max(0, gameState.enemy.health - helper.damage);
+                    showDamageText(gameState.enemy.x, gameState.enemy.y - 20, helper.damage, 'critical', false);
+                    addBattleLog(`曾擎危对潘燧画造成了${helper.damage}点暴击伤害！`);
+                    
+                    gameState.enemy.velocityY = -8;
+                    gameState.enemy.isJumping = true;
+                    gameState.enemy.x += 15;
+                    
+                    updateHealthBars();
+                    checkGameOver();
+                }
+                
+                createParticles(helper.x, helper.y, helper.color, 15);
+            }
+            
+            if (helper.state === 'entering') {
+                const jumpProgress = 1 - (helper.timer / 450);
+                const jumpHeight = Math.sin(jumpProgress * Math.PI) * 60;
+                
+                helper.x += 2;
+                helper.y = gameState.map.groundY - 40 - jumpHeight;
+                
+                if (helper.x >= helper.targetX - 10) {
+                    helper.state = 'attacking';
+                }
+            } else if (helper.state === 'attacking') {
+                helper.timer -= 1;
+                if (helper.timer < 300) {
+                    helper.state = 'exiting';
+                }
+            } else if (helper.state === 'exiting') {
+                helper.x += 2;
+                helper.y = gameState.map.groundY - 40;
+                ctx.globalAlpha = helper.timer / 300;
+                
+                if (helper.x > gameState.map.width + 30) {
+                    helper.active = false;
+                }
+            }
+            
+            drawStickman({
+                x: helper.x,
+                y: helper.y,
+                width: 25,
+                height: 40,
+                color: helper.color,
+                isCrouching: helper.state === 'attacking',
+                name: helper.name,
+                isAttacking: helper.state === 'attacking',
+                attackTimer: helper.state === 'attacking' ? 30 : 0
+            });
+            
+            ctx.restore();
+        }
+        
+        // 绘制陈酒龍
+        function drawChenJiulong(helper) {
+            if (!helper.active) return;
+            
+            ctx.save();
+            
+            if (helper.timer % 10 === 0) {
+                helper.particles.push(new Particle(
+                    helper.x + (Math.random() - 0.5) * 20,
+                    helper.y + (Math.random() - 0.5) * 20,
+                    helper.color,
+                    2
+                ));
+                
+                if (helper.remainingHeal > 0) {
+                    helper.healParticles.push(new HealParticle(
+                        helper.x + (Math.random() - 0.5) * 15,
+                        helper.y + (Math.random() - 0.5) * 10,
+                        gameState.player.x,
+                        gameState.player.y + 10
+                    ));
+                }
+            }
+            
+            for (let i = helper.particles.length - 1; i >= 0; i--) {
+                const p = helper.particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) {
+                    helper.particles.splice(i, 1);
+                }
+            }
+            
+            let healedThisFrame = false;
+            for (let i = helper.healParticles.length - 1; i >= 0; i--) {
+                const p = helper.healParticles[i];
+                p.update();
+                p.draw();
+                
+                if (p.reachedTarget) {
+                    helper.healParticles.splice(i, 1);
+                    healedThisFrame = true;
+                }
+            }
+            
+            if (healedThisFrame && helper.remainingHeal > 0) {
+                const healAmount = 1;
+                gameState.player.health = Math.min(gameState.player.maxHealth, gameState.player.health + healAmount);
+                helper.remainingHeal -= healAmount;
+                
+                showDamageText(gameState.player.x, gameState.player.y - 30, healAmount, 'heal', true);
+                updateHealthBars();
+                
+                if (helper.remainingHeal <= 0) {
+                    addBattleLog(`陈酒龍完成治疗，共恢复了${helper.totalHeal}点生命值！`);
+                }
+            }
+            
+            const circleRadius = 20 + Math.sin(Date.now() * 0.001) * 5;
+            ctx.strokeStyle = helper.color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.7;
+            ctx.beginPath();
+            ctx.arc(helper.x, helper.y + 20, circleRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            drawStickman({
+                x: helper.x,
+                y: helper.y,
+                width: 25,
+                height: 40,
+                color: helper.color,
+                isCrouching: false,
+                name: helper.name,
+                isAttacking: false,
+                attackTimer: 0
+            });
+            
+            ctx.restore();
+        }
+        
+        // 绘制周岬韬（真爱守护）- 退场动画改为由右往左
+        function drawZhouJiatao(helper) {
+            if (!helper.active) return;
+            
+            ctx.save();
+            
+            if (helper.timer % 8 === 0) {
+                helper.particles.push(new Particle(
+                    helper.x + (Math.random() - 0.5) * 20,
+                    helper.y + (Math.random() - 0.5) * 20,
+                    helper.color,
+                    2
+                ));
+            }
+            
+            for (let i = helper.particles.length - 1; i >= 0; i--) {
+                const p = helper.particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) {
+                    helper.particles.splice(i, 1);
+                }
+            }
+            
+            if (helper.state === 'appearing') {
+                // 从左向右移动
+                helper.x += 1.5;
+                
+                // 到达玩家右侧位置
+                if (helper.x > gameState.player.x + 30) {
+                    helper.state = 'shielding';
+                }
+            } else if (helper.state === 'shielding') {
+                if (!helper.shieldCreated) {
+                    gameState.player.shield = true;
+                    helper.shieldCreated = true;
+                    addBattleLog(`周岬韬为祝信屿创建了护盾！`);
+                    
+                    for (let i = 0; i < 15; i++) {
+                        gameState.particles.push(new Particle(
+                            gameState.player.x,
+                            gameState.player.y + 20,
+                            helper.color,
+                            3
+                        ));
+                    }
+                }
+                
+                ctx.fillStyle = helper.color;
+                ctx.beginPath();
+                ctx.rect(helper.x + 10, helper.y + 10, 15, 20);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                if (helper.timer < 100) {
+                    helper.state = 'disappearing';
+                }
+            } else if (helper.state === 'disappearing') {
+                // 退场动画改为由右往左
+                helper.x -= 1.5;
+                ctx.globalAlpha = helper.timer / 100;
+                
+                if (helper.x < -30) {
+                    helper.active = false;
+                }
+            }
+            
+            drawStickman({
+                x: helper.x,
+                y: helper.y,
+                width: 25,
+                height: 40,
+                color: helper.color,
+                isCrouching: false,
+                name: helper.name,
+                isAttacking: false,
+                attackTimer: 0
+            });
+            
+            ctx.restore();
+        }
+        
+        // 绘制护盾
+        function drawShield(x, y, size) {
+            ctx.save();
+            
+            // 护盾脉动动画
+            const pulse = 1 + Math.sin(Date.now() * 0.0008) * 0.1;
+            
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 3]);
+            
+            ctx.beginPath();
+            ctx.arc(x, y + size * 0.3, size * 0.7 * pulse, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // 内部光晕
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(x, y + size * 0.3, size * 0.6 * pulse, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        
+        // 绘制粒子效果
+        function drawParticles() {
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const particle = gameState.particles[i];
+                particle.update();
+                particle.draw();
+                
+                if (particle.life <= 0) {
+                    gameState.particles.splice(i, 1);
+                }
+            }
+        }
+        
+        // 绘制游戏 - 确保伤害数字在最上层绘制
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制地面
+            ctx.fillStyle = '#374151';
+            ctx.fillRect(0, gameState.map.groundY, gameState.map.width, gameState.map.height - gameState.map.groundY);
+            
+            // 绘制粒子
+            drawParticles();
+            
+            // 绘制玩家
+            drawStickman(gameState.player);
+            
+            // 绘制玩家护盾
+            if (gameState.player.shield) {
+                drawShield(
+                    gameState.player.x, 
+                    gameState.player.y, 
+                    gameState.player.height
+                );
+            }
+            
+            // 绘制敌人
+            drawStickman({
+                ...gameState.enemy,
+                isGhosted: gameState.enemy.isGhosted && Date.now() < gameState.enemy.ghostedUntil,
+                isFrozen: gameState.enemy.isFrozen && Date.now() < gameState.enemy.frozenUntil
+            });
+            
+            // 绘制祝芯花
+            drawZhuXinhua();
+            
+            // 绘制抛射物
+            drawProjectiles();
+            
+            // 绘制其他助手
+            drawChenJiulong(gameState.helpers.chenJiulong);
+            drawZhouJiatao(gameState.helpers.zhouJiatao);
+            drawZengQingwei(gameState.helpers.zengQingwei);
+            
+            // 最后绘制伤害数字，确保它们显示在最上层
+            for (let i = gameState.damageTexts.length - 1; i >= 0; i--) {
+                const text = gameState.damageTexts[i];
+                ctx.save();
+                ctx.font = `${text.fontWeight} ${text.fontSize}px Arial`;
+                ctx.fillStyle = text.color;
+                ctx.globalAlpha = text.alpha;
+                ctx.textAlign = 'center';
+                ctx.fillText(text.text, text.x, text.y);
+                ctx.restore();
+                
+                text.y -= 0.5;
+                text.alpha -= 0.008;
+                text.timer--;
+                
+                if (text.timer <= 0) {
+                    gameState.damageTexts.splice(i, 1);
+                }
+            }
+            
+            // 冷暴力提示
+            if (gameState.player.skillsFrozen && Date.now() < gameState.player.frozenUntil) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#ef4444';
+                ctx.textAlign = 'center';
+                ctx.fillText('您被冷暴力中，无法使用技能', canvas.width / 2, canvas.height / 2);
+                ctx.restore();
+            }
+        }
+        
+        // 更新游戏状态
+        function update() {
+            if (gameState.gameOver) return;
+            
+            const now = Date.now();
+            const gravity = 0.4;
+            
+            updateButtonStates();
+            
+            if (gameState.player.isAttacking) {
+                gameState.player.attackTimer--;
+                if (gameState.player.attackTimer <= 0) {
+                    gameState.player.isAttacking = false;
+                }
+            }
+            
+            if (gameState.enemy.isAttacking) {
+                gameState.enemy.attackTimer--;
+                if (gameState.enemy.attackTimer <= 0) {
+                    gameState.enemy.isAttacking = false;
+                }
+            }
+            
+            updateProjectiles();
+            
+            if (gameState.keys.up && !gameState.player.isJumping) {
+                gameState.player.velocityY = -gameState.player.jumpPower;
+                gameState.player.isJumping = true;
+            }
+            
+            gameState.player.isCrouching = gameState.keys.down;
+            
+            if (gameState.keys.left && !gameState.player.isAttacking) {
+                gameState.player.x -= gameState.player.speed;
+            }
+            if (gameState.keys.right && !gameState.player.isAttacking) {
+                gameState.player.x += gameState.player.speed;
+            }
+            
+            gameState.player.velocityY += gravity;
+            gameState.player.y += gameState.player.velocityY;
+            
+            if (gameState.player.y + gameState.player.height > gameState.map.groundY) {
+                gameState.player.y = gameState.map.groundY - gameState.player.height;
+                gameState.player.velocityY = 0;
+                gameState.player.isJumping = false;
+            }
+            
+            gameState.player.x = Math.max(
+                gameState.player.width / 2, 
+                Math.min(
+                    gameState.map.width - gameState.player.width / 2, 
+                    gameState.player.x
+                )
+            );
+            
+            // 敌方状态更新
+            if (gameState.enemy.isEvasive && now > gameState.enemy.evasiveUntil) {
+                gameState.enemy.isEvasive = false;
+            }
+            
+            if (gameState.enemy.isGhosted && now > gameState.enemy.ghostedUntil) {
+                gameState.enemy.isGhosted = false;
+            }
+            
+            if (gameState.player.skillsFrozen && now > gameState.player.frozenUntil) {
+                gameState.player.skillsFrozen = false;
+                addBattleLog("冷暴力效果解除！可以使用技能了！");
+            }
+            
+            // 敌方移动控制（如果未被冻结）
+            if (!gameState.enemy.isFrozen || now > gameState.enemy.frozenUntil) {
+                if (gameState.enemy.isEvasive) {
+                    if (gameState.enemy.x < gameState.player.x) {
+                        gameState.enemy.x -= gameState.enemy.speed / 3;
+                    } else {
+                        gameState.enemy.x += gameState.enemy.speed / 3;
+                    }
+                    
+                    if (Math.random() < 0.005 && !gameState.enemy.isJumping) {
+                        gameState.enemy.velocityY = -gameState.enemy.speed * 2;
+                        gameState.enemy.isJumping = true;
+                    }
+                    
+                    if (Math.random() < 0.01) {
+                        gameState.enemy.isCrouching = !gameState.enemy.isCrouching;
+                    }
+                } else {
+                    if (Math.abs(gameState.enemy.x - gameState.player.x) > 100) {
+                        if (gameState.enemy.x < gameState.player.x) {
+                            gameState.enemy.x += gameState.enemy.speed / 2;
+                        } else {
+                            gameState.enemy.x -= gameState.enemy.speed / 2;
+                        }
+                    }
+                    
+                    if (Math.random() < 0.003 && !gameState.enemy.isJumping) {
+                        gameState.enemy.velocityY = -gameState.enemy.speed * 2;
+                        gameState.enemy.isJumping = true;
+                    }
+                    
+                    if (Math.random() < 0.007) {
+                        gameState.enemy.isCrouching = !gameState.enemy.isCrouching;
+                    }
+                }
+            }
+            
+            // 应用重力
+            gameState.enemy.velocityY += gravity;
+            gameState.enemy.y += gameState.enemy.velocityY;
+            
+            if (gameState.enemy.y + gameState.enemy.height > gameState.map.groundY) {
+                gameState.enemy.y = gameState.map.groundY - gameState.enemy.height;
+                gameState.enemy.velocityY = 0;
+                gameState.enemy.isJumping = false;
+            }
+            
+            gameState.enemy.x = Math.max(
+                gameState.enemy.width / 2, 
+                Math.min(
+                    gameState.map.width - gameState.enemy.width / 2, 
+                    gameState.enemy.x
+                )
+            );
+            
+            // 更新助手计时器
+            if (gameState.helpers.zengQingwei.active) {
+                gameState.helpers.zengQingwei.timer--;
+                if (gameState.helpers.zengQingwei.timer <= 0) {
+                    gameState.helpers.zengQingwei.active = false;
+                }
+            }
+            
+            if (gameState.helpers.chenJiulong.active) {
+                gameState.helpers.chenJiulong.timer--;
+                if (gameState.helpers.chenJiulong.timer <= 0) {
+                    gameState.helpers.chenJiulong.active = false;
+                }
+            }
+            
+            if (gameState.helpers.zhouJiatao.active) {
+                gameState.helpers.zhouJiatao.timer--;
+                if (gameState.helpers.zhouJiatao.timer <= 0) {
+                    gameState.helpers.zhouJiatao.active = false;
+                }
+            }
+            
+            enemyBasicAttack();
+            enemyUseSkill();
+            updateSkillCooldowns();
+            checkGameOver();
+        }
+        
+        // 游戏循环
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 开始游戏
+        addBattleLog("游戏开始！打败渣男潘燧画！");
+        updateHealthBars();
+        gameLoop();
+    </script>
+
+
+</body></html>
