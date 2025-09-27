@@ -33,11 +33,26 @@
                             '0%': { transform: 'translateY(0)' },
                             '50%': { transform: 'translateY(5px)' },
                             '100%': { transform: 'translateY(0)' }
+                        },
+                        pulse: {
+                            '0%, 100%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.05)' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        fadeOut: {
+                            '0%': { opacity: '1' },
+                            '100%': { opacity: '0' }
                         }
                     },
                     animation: {
                         'slide-down': 'slideDown 0.3s ease-out forwards',
-                        'shift-down': 'shiftDown 0.4s ease-out forwards'
+                        'shift-down': 'shiftDown 0.4s ease-out forwards',
+                        'pulse-slow': 'pulse 2s infinite',
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                        'fade-out': 'fadeOut 0.5s ease-out forwards'
                     }
                 }
             }
@@ -48,7 +63,6 @@
     <style type="text/tailwindcss">
         @layer utilities {
             .game-border {
-                /* 移除黄色边框图案，解决不规则线条问题 */
                 border-width: 0;
                 border-style: none;
             }
@@ -87,6 +101,47 @@
             .new-indicator {
                 @apply inline-block bg-red-500 text-white text-[8px] px-1 rounded mr-1;
             }
+            .fingerprint-container {
+                position: relative;
+                width: 120px;
+                height: 120px;
+                margin: 0 auto;
+            }
+            .fingerprint-progress {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                border: 4px solid transparent;
+                border-top-color: #e63946;
+                border-right-color: #e63946;
+                border-bottom-color: #e63946;
+                transform: rotate(-45deg);
+                transition: all 0.1s linear;
+            }
+            /* 对话气泡样式 */
+            .dialog-bubble {
+                position: absolute;
+                background: rgba(255, 255, 255, 0.9);
+                color: #1d3557;
+                padding: 8px 12px;
+                border-radius: 12px;
+                font-size: 14px;
+                max-width: 200px;
+                z-index: 10;
+            }
+            .dialog-bubble:after {
+                content: '';
+                position: absolute;
+                bottom: -8px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-width: 8px 8px 0;
+                border-style: solid;
+                border-color: rgba(255, 255, 255, 0.9) transparent;
+            }
         }
     </style>
     
@@ -94,8 +149,41 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-900 min-h-screen flex items-center justify-center p-4 text-light">
+    <!-- 启动页面 -->
+    <div id="startScreen" class="fixed inset-0 bg-dark/95 z-50 flex flex-col items-center justify-center p-4 transition-opacity duration-500">
+        <div class="max-w-md w-full text-center animate-fade-in">
+            <h1 class="text-retro text-2xl md:text-3xl mb-6 font-pixel retro-text animate-pulse-slow">勇者大冒险</h1>
+            
+            <p class="text-light text-sm md:text-base mb-8 leading-relaxed">
+                亲爱的勇者，欢迎来到这个异世界，目前我们遇到了一个超级Boss，请长按下面的指纹，认领自己的身份，加入战斗吧！
+            </p>
+            
+            <div class="fingerprint-container mb-6">
+                <div id="fingerprintProgress" class="fingerprint-progress" style="transform: rotate(-45deg); border-left-color: transparent;"></div>
+                <button id="fingerprintBtn" class="w-full h-full bg-secondary rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform duration-100">
+                    <!-- 指纹图片 - 请替换为本地接口 -->
+                    <!-- 本地接口替换处：将下方src属性值替换为您的本地图片路径 指纹路径-->
+                    <img src="https://gd-hbimg.huaban.com/8e0e2a907893113555bbf88c59dd3317907dc28929301-sN9w4I" alt="指纹识别图标" class="w-20 h-20 object-contain filter invert">
+                </button>
+            </div>
+            
+            <p id="pressHint" class="text-xs text-gray-400">长按指纹开始识别...</p>
+        </div>
+    </div>
+
+    <!-- 身份验证成功对话框 -->
+    <div id="identityDialog" class="fixed inset-0 bg-dark/95 z-50 flex flex-col items-center justify-center p-4 hidden">
+        <div class="max-w-xs w-full text-center bg-gray-800 p-6 rounded-xl shadow-2xl animate-fade-in">
+            <div class="text-retro text-xl mb-4 font-pixel retro-text">身份认领成功</div>
+            <p class="text-light text-base mb-6">您游玩的角色为：<span class="character-text">祝信屿</span></p>
+            <button id="enterBattleBtn" class="bg-primary hover:bg-primary/80 text-light py-3 px-6 rounded-lg font-pixel text-sm transition-all transform hover:scale-105 active:scale-95 w-full">
+                加入战斗
+            </button>
+        </div>
+    </div>
+
     <!-- 游戏容器 -->
-    <div class="max-w-md w-full mx-auto">
+    <div class="max-w-md w-full mx-auto opacity-0 transition-opacity duration-500" id="gameContainer">
         <!-- 复古游戏机外壳 -->
         <div class="bg-dark rounded-3xl p-4 md:p-6 game-shadow transform rotate-0 hover:rotate-[0.5deg] transition-transform duration-300">
             <!-- 游戏机顶部 - 屏幕区域 -->
@@ -190,7 +278,6 @@
             <!-- 胜利和失败对话框 (默认隐藏) -->
             <div id="winScreen" class="fixed inset-0 bg-dark/95 flex flex-col items-center justify-center z-50 hidden">
                 <div class="text-center p-6 max-w-xs">
-                    <!-- 胜利结语格式调整：大字、中字、小字层级 -->
                     <div class="text-retro text-xl md:text-2xl mb-3 font-pixel retro-text">恭喜你击败了渣男潘燧画！</div>
                     <div class="text-retro text-lg md:text-xl mb-4 font-pixel retro-text">祝信屿你是最棒的！</div>
                     <p class="text-light text-sm md:text-base mb-6">你这样厉害的女人，做什么都会成功的！</p>
@@ -218,9 +305,118 @@
     </div>
 
     <script>
+        // 启动页面逻辑
+        const startScreen = document.getElementById('startScreen');
+        const identityDialog = document.getElementById('identityDialog');
+        const enterBattleBtn = document.getElementById('enterBattleBtn');
+        const gameContainer = document.getElementById('gameContainer');
+        const fingerprintBtn = document.getElementById('fingerprintBtn');
+        const fingerprintProgress = document.getElementById('fingerprintProgress');
+        const pressHint = document.getElementById('pressHint');
+        
+        let pressTimer = null;
+        let pressStartTime = 0;
+        const requiredPressTime = 1500; // 需要长按1.5秒
+        
+        // 指纹识别进度动画
+        function updateFingerprintProgress(progress) {
+            const angle = -45 + (progress * 360);
+            fingerprintProgress.style.transform = `rotate(${angle}deg)`;
+            
+            // 更新边框颜色，创建进度环效果
+            if (progress > 0.25) {
+                fingerprintProgress.style.borderLeftColor = '#e63946';
+            }
+        }
+        
+        // 开始长按
+        function startPress() {
+            pressStartTime = Date.now();
+            pressHint.textContent = "识别中...";
+            
+            pressTimer = setInterval(() => {
+                const elapsed = Date.now() - pressStartTime;
+                const progress = Math.min(elapsed / requiredPressTime, 1);
+                
+                updateFingerprintProgress(progress);
+                
+                if (progress >= 1) {
+                    completePress();
+                }
+            }, 50);
+        }
+        
+        // 结束长按（未完成）
+        function endPress() {
+            if (pressTimer) {
+                clearInterval(pressTimer);
+                pressTimer = null;
+            }
+            
+            const elapsed = Date.now() - pressStartTime;
+            if (elapsed < requiredPressTime) {
+                // 未完成长按
+                updateFingerprintProgress(0);
+                pressHint.textContent = "长按时间不足，请重试...";
+                setTimeout(() => {
+                    pressHint.textContent = "长按指纹开始识别...";
+                }, 1000);
+            }
+        }
+        
+        // 完成长按识别
+        function completePress() {
+            if (pressTimer) {
+                clearInterval(pressTimer);
+                pressTimer = null;
+            }
+            
+            // 隐藏启动屏幕，显示身份验证对话框
+            startScreen.classList.add('animate-fade-out');
+            setTimeout(() => {
+                startScreen.style.display = 'none';
+                identityDialog.classList.remove('hidden');
+                identityDialog.classList.add('animate-fade-in');
+            }, 500);
+        }
+        
+        // 进入战斗按钮点击事件
+        enterBattleBtn.addEventListener('click', () => {
+            identityDialog.classList.add('animate-fade-out');
+            setTimeout(() => {
+                identityDialog.style.display = 'none';
+                gameContainer.style.opacity = '1';
+                startGame();
+            }, 500);
+        });
+        
+        // 绑定指纹按钮事件
+        fingerprintBtn.addEventListener('mousedown', startPress);
+        fingerprintBtn.addEventListener('mouseup', endPress);
+        fingerprintBtn.addEventListener('mouseleave', endPress);
+        
+        // 触摸事件支持
+        fingerprintBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startPress();
+        });
+        
+        fingerprintBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            endPress();
+        });
+        
         // 游戏初始化
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        
+        // 创建对话气泡元素
+        const dialogBubble = document.createElement('div');
+        dialogBubble.className = 'dialog-bubble hidden';
+        dialogBubble.style.left = '50%';
+        dialogBubble.style.top = '30%';
+        dialogBubble.style.transform = 'translate(-50%, -100%)';
+        canvas.parentNode.appendChild(dialogBubble);
         
         // 获取所有控制按钮
         const controlButtons = [
@@ -401,6 +597,7 @@
                 width: 30,
                 height: 50,
                 speed: 2,
+                jumpPower: 14, // 增加跳跃高度用于逃避责任
                 velocityY: 0,
                 isJumping: false,
                 isCrouching: false,
@@ -408,6 +605,8 @@
                 maxHealth: 1000,
                 isEvasive: false,
                 evasiveUntil: 0,
+                evasiveJumpTimer: 0, // 用于控制逃避责任时的跳跃频率
+                evasiveMoveTimer: 0, // 用于控制逃避责任时的左右移动
                 isGhosted: false,
                 ghostedUntil: 0,
                 isFrozen: false,  // 是否被冻结
@@ -416,7 +615,8 @@
                 color: '#ef4444', // 敌人红色
                 isAttacking: false,
                 attackTimer: 0,
-                lastAttackTime: 0
+                lastAttackTime: 0,
+                isReadyToAttack: false // 新增：是否准备好攻击
             },
             // 祝芯花角色
             zhuXinhua: {
@@ -434,7 +634,7 @@
             helpers: {
                 zengQingwei: { 
                     active: false, 
-                    x: -50,
+                    x: -30,
                     y: 0, 
                     timer: 0,
                     name: "曾擎危",
@@ -443,7 +643,8 @@
                     state: 'entering',
                     targetX: 0,
                     knockbackTarget: false,
-                    damageDealt: false // 新增：标记是否已造成伤害
+                    damageDealt: false,
+                    damage: 0
                 },
                 chenJiulong: { 
                     active: false, 
@@ -466,7 +667,8 @@
                     color: '#3b82f6',
                     particles: [],
                     state: 'appearing',
-                    shieldCreated: false
+                    shieldCreated: false,
+                    alpha: 0  // 初始透明度为0，用于渐显效果
                 }
             },
             map: {
@@ -490,7 +692,9 @@
             lastEnemySkillTime: 0,
             gameOver: false,
             gameWon: false,
-            particles: []
+            particles: [],
+            gameStartTime: 0, // 游戏开始时间
+            enemyDialogShown: false // 敌人对话是否已显示
         };
         
         // DOM元素引用
@@ -509,6 +713,30 @@
             3: document.getElementById('skill3Cd'),
             4: document.getElementById('skill4Cd')
         };
+        
+        // 开始游戏
+        function startGame() {
+            gameState.gameStartTime = Date.now();
+            gameState.enemy.isReadyToAttack = false;
+            gameState.enemyDialogShown = false;
+            
+            addBattleLog("游戏开始！打败渣男潘燧画！");
+            updateHealthBars();
+            gameLoop();
+        }
+        
+        // 显示敌人对话
+        function showEnemyDialog() {
+            dialogBubble.textContent = "就是你吗小丫头，还想打败我？";
+            dialogBubble.classList.remove('hidden');
+            
+            // 3秒后隐藏对话并允许敌人开始攻击
+            setTimeout(() => {
+                dialogBubble.classList.add('hidden');
+                gameState.enemy.isReadyToAttack = true;
+                addBattleLog("潘燧画开始进攻了！");
+            }, 3000);
+        }
         
         // 更新按钮状态（启用/禁用）
         function updateButtonStates() {
@@ -773,7 +1001,7 @@
             }
             
             switch(skillId) {
-                case 1: // 普通攻击 - 不使用技能格式显示
+                case 1: // 普通攻击
                     if (isClose(gameState.player, gameState.enemy)) {
                         gameState.player.isAttacking = true;
                         gameState.player.attackTimer = 20;
@@ -803,6 +1031,12 @@
                                 updateHealthBars();
                                 checkGameOver();
                             } else {
+                                // 检查敌方是否在使用逃避责任技能且正在跳跃
+                                if (gameState.enemy.isEvasive && gameState.enemy.isJumping) {
+                                    addBattleLog(`祝信屿的普通攻击被正在高跳闪避的潘燧画躲开了！`);
+                                    return;
+                                }
+                                
                                 const damage = Math.floor(Math.random() * 51);
                                 if (damage > 0) {
                                     const isCritical = Math.random() < 0.1;
@@ -856,7 +1090,7 @@
                         targetX: gameState.enemy.x,
                         knockbackTarget: false,
                         damageDealt: false,
-                        damage: damage // 存储伤害值以便后续使用
+                        damage: damage
                     };
                     
                     addBattleLog(`祝信屿召唤了曾擎危使用《召唤助手》！`);
@@ -897,20 +1131,21 @@
                     gameState.player.shield = true;
                     gameState.player.shieldEndTime = Date.now() + 5000;
                     
-                    // 初始化周岬韬状态 - 从左侧进入
+                    // 初始化周岬韬状态 - 从角色左边渐显出现
                     gameState.helpers.zhouJiatao = {
                         active: true,
-                        x: -30,  // 左侧屏幕外
+                        x: gameState.player.x - 60,  // 角色左边60像素
                         y: gameState.player.y,
                         timer: 300,
                         name: "周岬韬",
                         color: '#3b82f6',
                         particles: [],
                         state: 'appearing',
-                        shieldCreated: true
+                        shieldCreated: true,
+                        alpha: 0  // 初始透明度为0，用于渐显效果
                     };
                     
-                    createParticles(-30, gameState.player.y, '#3b82f6', 10);
+                    createParticles(gameState.player.x - 60, gameState.player.y, '#3b82f6', 10);
                     
                     // 护盾创建特效
                     for (let i = 0; i < 15; i++) {
@@ -930,6 +1165,9 @@
         
         // 敌方普通攻击
         function enemyBasicAttack() {
+            // 检查是否准备好攻击
+            if (!gameState.enemy.isReadyToAttack) return;
+            
             const now = Date.now();
             
             // 检查是否被冻结
@@ -975,6 +1213,9 @@
         
         // 执行忙碌攻击
         function performBusyAttack() {
+            // 检查是否准备好攻击
+            if (!gameState.enemy.isReadyToAttack) return;
+            
             // 检查是否被冻结
             if (gameState.enemy.isFrozen && Date.now() < gameState.enemy.frozenUntil) {
                 return;
@@ -998,6 +1239,9 @@
         
         // 敌方使用技能
         function enemyUseSkill() {
+            // 检查是否准备好攻击
+            if (!gameState.enemy.isReadyToAttack) return;
+            
             const now = Date.now();
             
             // 检查是否被冻结
@@ -1020,15 +1264,24 @@
                 case 2: // 已读不回
                     gameState.enemy.isGhosted = true;
                     gameState.enemy.ghostedUntil = now + 3000;
-                    addBattleLog(`潘燧画使用了《已读不回》，3秒内免疫所有伤害！`);
+                    gameState.enemy.isCrouching = true; // 强制蹲下
+                    addBattleLog(`潘燧画使用了《已读不回》，3秒内免疫所有伤害并保持蹲下！`);
                     createParticles(gameState.enemy.x, gameState.enemy.y, '#9ca3af', 15);
                     break;
                     
-                case 3: // 逃避责任
+                case 3: // 逃避责任 - 连续高跳并频繁左右移动
                     gameState.enemy.isEvasive = true;
-                    gameState.enemy.evasiveUntil = now + 2000;
-                    addBattleLog(`潘燧画使用了《逃避责任》，开始逃跑！`);
+                    gameState.enemy.evasiveUntil = now + 3000;
+                    gameState.enemy.evasiveJumpTimer = 0; // 重置跳跃计时器
+                    gameState.enemy.evasiveMoveTimer = 0; // 重置移动计时器
+                    addBattleLog(`潘燧画使用了《逃避责任》，开始连续高跳并左右移动闪避攻击！`);
                     createParticles(gameState.enemy.x, gameState.enemy.y, '#6b7280', 15);
+                    
+                    // 立即触发一次跳跃
+                    if (!gameState.enemy.isJumping) {
+                        gameState.enemy.velocityY = -gameState.enemy.jumpPower;
+                        gameState.enemy.isJumping = true;
+                    }
                     break;
                     
                 case 4: // 冷暴力 - 1秒后使用忙碌攻击
@@ -1051,7 +1304,7 @@
             // 初始化祝芯花，总治疗50点，持续10秒
             gameState.zhuXinhua = {
                 active: true,
-                x: gameState.player.x - 80,  // 从更左侧出现
+                x: gameState.player.x - 80,
                 y: gameState.player.y,
                 timer: 600,  // 10秒（600帧）
                 name: "祝芯花",
@@ -1273,6 +1526,13 @@
                 addBattleLog("潘燧画从冻结状态中恢复了！");
             }
             
+            // 检查已读不回状态是否结束
+            if (gameState.enemy.isGhosted && now > gameState.enemy.ghostedUntil) {
+                gameState.enemy.isGhosted = false;
+                gameState.enemy.isCrouching = false; // 恢复站立状态
+                addBattleLog("潘燧画的《已读不回》效果结束了！");
+            }
+            
             if (gameState.enemy.health <= 0 && !gameState.gameOver) {
                 gameState.gameOver = true;
                 gameState.gameWon = true;
@@ -1301,6 +1561,13 @@
         
         // 重新开始游戏
         function restartGame() {
+            // 隐藏对话气泡
+            dialogBubble.classList.add('hidden');
+            
+            // 重置对话框状态
+            identityDialog.classList.add('hidden');
+            identityDialog.classList.remove('animate-fade-out');
+            
             controlButtons.forEach(button => {
                 button.classList.remove('disabled');
                 button.disabled = false;
@@ -1335,6 +1602,7 @@
                 width: 30,
                 height: 50,
                 speed: 2,
+                jumpPower: 14,
                 velocityY: 0,
                 isJumping: false,
                 isCrouching: false,
@@ -1342,6 +1610,8 @@
                 maxHealth: 1000,
                 isEvasive: false,
                 evasiveUntil: 0,
+                evasiveJumpTimer: 0,
+                evasiveMoveTimer: 0,
                 isGhosted: false,
                 ghostedUntil: 0,
                 isFrozen: false,
@@ -1350,7 +1620,8 @@
                 color: '#ef4444',
                 isAttacking: false,
                 attackTimer: 0,
-                lastAttackTime: 0
+                lastAttackTime: 0,
+                isReadyToAttack: false
             };
             
             // 重置祝芯花
@@ -1371,7 +1642,7 @@
             gameState.helpers = {
                 zengQingwei: { 
                     active: false, 
-                    x: -50,
+                    x: -30,
                     y: 0, 
                     timer: 0,
                     name: "曾擎危",
@@ -1404,7 +1675,8 @@
                     color: '#3b82f6',
                     particles: [],
                     state: 'appearing',
-                    shieldCreated: false
+                    shieldCreated: false,
+                    alpha: 0
                 }
             };
             
@@ -1420,24 +1692,60 @@
             gameState.lastEnemySkillTime = 0;
             gameState.gameOver = false;
             gameState.gameWon = false;
+            gameState.gameStartTime = 0;
+            gameState.enemyDialogShown = false;
             
             battleLog.innerHTML = '';
             winScreen.classList.add('hidden');
             loseScreen.classList.add('hidden');
+            gameContainer.style.opacity = '0';
+            
+            // 显示启动屏幕，允许重新开始流程
+            startScreen.style.display = 'flex';
+            startScreen.classList.remove('animate-fade-out');
+            updateFingerprintProgress(0);
+            pressHint.textContent = "长按指纹开始识别...";
             
             updateHealthBars();
             updateSkillCooldowns();
+        }
+        
+        // 绘制盾牌
+        function drawShield(x, y) {
+            ctx.save();
+            ctx.fillStyle = '#3b82f6';
             
-            addBattleLog("游戏开始！打败渣男潘燧画！");
+            // 盾牌主体
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - 10, y + 15);
+            ctx.lineTo(x - 5, y + 15);
+            ctx.lineTo(x - 5, y + 20);
+            ctx.lineTo(x + 5, y + 20);
+            ctx.lineTo(x + 5, y + 15);
+            ctx.lineTo(x + 10, y + 15);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 盾牌细节
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.arc(x, y + 10, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
         }
         
         // 绘制火柴人
         function drawStickman(character) {
-            const {x, y, width, height, color, isCrouching, isGhosted = false, isFrozen = false, name, isAttacking, attackTimer} = character;
+            const {x, y, width, height, color, isCrouching, isGhosted = false, isFrozen = false, name, isAttacking, attackTimer, alpha = 1, holdShield = false} = character;
             ctx.save();
             
+            // 应用透明度（用于渐显效果和已读不回的半透明效果）
+            ctx.globalAlpha = alpha;
+            
             if (isGhosted) {
-                ctx.globalAlpha = 0.5;
+                ctx.globalAlpha *= 0.5; // 已读不回时半透明
             }
             
             // 冻结效果
@@ -1518,6 +1826,11 @@
             ctx.lineTo(armRightX, armRightY);
             ctx.stroke();
             
+            // 如果需要持盾，在左手绘制盾牌
+            if (holdShield) {
+                drawShield(armLeftX - 5, armLeftY);
+            }
+            
             // 腿部
             const legY = drawY + drawHeight * 0.7;
             if (isCrouching) {
@@ -1539,7 +1852,7 @@
             ctx.restore();
         }
         
-        // 绘制曾擎危 - 修改为接触时立即造成伤害
+        // 绘制曾擎危
         function drawZengQingwei(helper) {
             if (!helper.active) return;
             
@@ -1571,16 +1884,21 @@
                 if (gameState.enemy.isGhosted && Date.now() < gameState.enemy.ghostedUntil) {
                     addBattleLog(`曾擎危的攻击被潘燧画的《已读不回》闪避了！`);
                 } else {
-                    gameState.enemy.health = Math.max(0, gameState.enemy.health - helper.damage);
-                    showDamageText(gameState.enemy.x, gameState.enemy.y - 20, helper.damage, 'critical', false);
-                    addBattleLog(`曾擎危对潘燧画造成了${helper.damage}点暴击伤害！`);
-                    
-                    gameState.enemy.velocityY = -8;
-                    gameState.enemy.isJumping = true;
-                    gameState.enemy.x += 15;
-                    
-                    updateHealthBars();
-                    checkGameOver();
+                    // 检查是否在跳跃闪避
+                    if (gameState.enemy.isEvasive && gameState.enemy.isJumping) {
+                        addBattleLog(`曾擎危的攻击被正在高跳闪避的潘燧画躲开了！`);
+                    } else {
+                        gameState.enemy.health = Math.max(0, gameState.enemy.health - helper.damage);
+                        showDamageText(gameState.enemy.x, gameState.enemy.y - 20, helper.damage, 'critical', false);
+                        addBattleLog(`曾擎危对潘燧画造成了${helper.damage}点暴击伤害！`);
+                        
+                        gameState.enemy.velocityY = -8;
+                        gameState.enemy.isJumping = true;
+                        gameState.enemy.x += 15;
+                        
+                        updateHealthBars();
+                        checkGameOver();
+                    }
                 }
                 
                 createParticles(helper.x, helper.y, helper.color, 15);
@@ -1707,11 +2025,16 @@
             ctx.restore();
         }
         
-        // 绘制周岬韬（真爱守护）- 退场动画改为由右往左
+        // 绘制周岬韬（真爱守护）- 手持盾牌
         function drawZhouJiatao(helper) {
             if (!helper.active) return;
             
             ctx.save();
+            
+            // 渐显效果
+            if (helper.alpha < 1) {
+                helper.alpha += 0.05;
+            }
             
             if (helper.timer % 8 === 0) {
                 helper.particles.push(new Particle(
@@ -1732,11 +2055,10 @@
             }
             
             if (helper.state === 'appearing') {
-                // 从左向右移动
-                helper.x += 1.5;
-                
-                // 到达玩家右侧位置
-                if (helper.x > gameState.player.x + 30) {
+                // 从左向右移动到玩家身边
+                if (helper.x < gameState.player.x - 30) {
+                    helper.x += 1;
+                } else {
                     helper.state = 'shielding';
                 }
             } else if (helper.state === 'shielding') {
@@ -1755,27 +2077,35 @@
                     }
                 }
                 
-                ctx.fillStyle = helper.color;
+                // 保持在玩家左侧
+                if (helper.x < gameState.player.x - 30) {
+                    helper.x += 0.5;
+                } else if (helper.x > gameState.player.x - 30) {
+                    helper.x -= 0.5;
+                }
+                
+                // 护盾效果
+                const shieldPulse = 1 + Math.sin(Date.now() * 0.002) * 0.1;
+                ctx.strokeStyle = helper.color;
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.5;
                 ctx.beginPath();
-                ctx.rect(helper.x + 10, helper.y + 10, 15, 20);
-                ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
+                ctx.arc(gameState.player.x, gameState.player.y + 20, 40 * shieldPulse, 0, Math.PI * 2);
                 ctx.stroke();
                 
                 if (helper.timer < 100) {
                     helper.state = 'disappearing';
                 }
             } else if (helper.state === 'disappearing') {
-                // 退场动画改为由右往左
-                helper.x -= 1.5;
-                ctx.globalAlpha = helper.timer / 100;
+                // 淡出效果
+                helper.alpha -= 0.03;
                 
-                if (helper.x < -30) {
+                if (helper.alpha <= 0) {
                     helper.active = false;
                 }
             }
             
+            // 绘制手持盾牌的周岬韬
             drawStickman({
                 x: helper.x,
                 y: helper.y,
@@ -1785,14 +2115,16 @@
                 isCrouching: false,
                 name: helper.name,
                 isAttacking: false,
-                attackTimer: 0
+                attackTimer: 0,
+                alpha: helper.alpha,
+                holdShield: true  // 关键：设置持盾属性为true
             });
             
             ctx.restore();
         }
         
         // 绘制护盾
-        function drawShield(x, y, size) {
+        function drawShieldEffect(x, y, size) {
             ctx.save();
             
             // 护盾脉动动画
@@ -1846,7 +2178,7 @@
             
             // 绘制玩家护盾
             if (gameState.player.shield) {
-                drawShield(
+                drawShieldEffect(
                     gameState.player.x, 
                     gameState.player.y, 
                     gameState.player.height
@@ -1908,6 +2240,12 @@
         function update() {
             if (gameState.gameOver) return;
             
+            // 显示敌人开场对话
+            if (!gameState.enemyDialogShown) {
+                showEnemyDialog();
+                gameState.enemyDialogShown = true;
+            }
+            
             const now = Date.now();
             const gravity = 0.4;
             
@@ -1963,10 +2301,12 @@
             // 敌方状态更新
             if (gameState.enemy.isEvasive && now > gameState.enemy.evasiveUntil) {
                 gameState.enemy.isEvasive = false;
+                addBattleLog("潘燧画的《逃避责任》效果结束了！");
             }
             
             if (gameState.enemy.isGhosted && now > gameState.enemy.ghostedUntil) {
                 gameState.enemy.isGhosted = false;
+                gameState.enemy.isCrouching = false; // 恢复站立状态
             }
             
             if (gameState.player.skillsFrozen && now > gameState.player.frozenUntil) {
@@ -1977,15 +2317,26 @@
             // 敌方移动控制（如果未被冻结）
             if (!gameState.enemy.isFrozen || now > gameState.enemy.frozenUntil) {
                 if (gameState.enemy.isEvasive) {
-                    if (gameState.enemy.x < gameState.player.x) {
-                        gameState.enemy.x -= gameState.enemy.speed / 3;
-                    } else {
-                        gameState.enemy.x += gameState.enemy.speed / 3;
+                    // 逃避责任状态下的连续高跳和频繁左右移动逻辑
+                    gameState.enemy.evasiveJumpTimer++;
+                    gameState.enemy.evasiveMoveTimer++;
+                    
+                    // 每40帧（约0.67秒）跳一次，更频繁
+                    if (gameState.enemy.evasiveJumpTimer >= 40 && !gameState.enemy.isJumping) {
+                        gameState.enemy.velocityY = -gameState.enemy.jumpPower;
+                        gameState.enemy.isJumping = true;
+                        gameState.enemy.evasiveJumpTimer = 0;
                     }
                     
-                    if (Math.random() < 0.005 && !gameState.enemy.isJumping) {
-                        gameState.enemy.velocityY = -gameState.enemy.speed * 2;
-                        gameState.enemy.isJumping = true;
+                    // 每15帧（约0.25秒）随机左右移动一次，更频繁
+                    if (gameState.enemy.evasiveMoveTimer >= 15) {
+                        // 50%概率向左或向右移动
+                        if (Math.random() < 0.5) {
+                            gameState.enemy.x -= gameState.enemy.speed * 1.5; // 移动速度更快
+                        } else {
+                            gameState.enemy.x += gameState.enemy.speed * 1.5;
+                        }
+                        gameState.enemy.evasiveMoveTimer = 0;
                     }
                     
                     if (Math.random() < 0.01) {
@@ -2001,7 +2352,7 @@
                     }
                     
                     if (Math.random() < 0.003 && !gameState.enemy.isJumping) {
-                        gameState.enemy.velocityY = -gameState.enemy.speed * 2;
+                        gameState.enemy.velocityY = -gameState.enemy.jumpPower / 1.5; // 普通跳跃高度较低
                         gameState.enemy.isJumping = true;
                     }
                     
@@ -2063,12 +2414,5 @@
             draw();
             requestAnimationFrame(gameLoop);
         }
-        
-        // 开始游戏
-        addBattleLog("游戏开始！打败渣男潘燧画！");
-        updateHealthBars();
-        gameLoop();
     </script>
-
-
 </body></html>
